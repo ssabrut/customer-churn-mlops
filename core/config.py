@@ -11,3 +11,6 @@ class Settings(DefaultSettings):
     debug: bool = True
     environment: str = "development"
     service_name: str = "churn-api"
+
+def get_settings() -> Settings:
+    return Settings()
