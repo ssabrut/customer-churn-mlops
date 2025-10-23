@@ -5,10 +5,13 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "fastapi[standard]>=0.119.1",
     "matplotlib>=3.10.7",
     "numpy>=2.2.6",
     "pandas>=2.3.3",
     "pyarrow>=21.0.0",
+    "pydantic>=2.12.3",
+    "pydantic-settings>=2.11.0",
     "scikit-learn>=1.7.2",
     "seaborn>=0.13.2",
     "xgboost>=3.0.5",
