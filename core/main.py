@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 
 from core.config import Settings, get_settings
 from core.services.mlflow.factory import make_mlflow_service
+from core.services.mlflow import MLflowClient
 
 try:
     settings: Settings = get_settings()
@@ -21,8 +22,11 @@ except ValidationError as e:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    mlflow_client: MLflowClient = make_mlflow_service()
+    model, _ = mlflow_client.load_model("XGBoostChurnModel", version=1)
+    
     app.state.settings = settings
-    app.state.mlflow_client = make_mlflow_service()
+    app.state.model = model
     yield
 
 app = FastAPI(

@@ -15,6 +15,7 @@ class Settings(DefaultSettings):
 
     # MLflow config
     mlflow_s3_endpoint_url: str = "http://127.0.0.1:9002"
+    mlflow_tracking_url: str = "http://127.0.0.1:5050"
 
 
 def get_settings() -> Settings:
