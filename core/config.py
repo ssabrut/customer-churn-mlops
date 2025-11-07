@@ -19,7 +19,3 @@ class Settings(DefaultSettings):
 
 def get_settings() -> Settings:
     return Settings()
-
-
-def get_settings() -> Settings:
-    return Settings()

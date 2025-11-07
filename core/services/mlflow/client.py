@@ -6,7 +6,6 @@ from mlflow.pyfunc import PyFuncModel
 from typing import Optional, Tuple, Dict
 
 from core.config import Settings
-from core.schemas.response import HealthCheckResponse
 
 class MLflowClient:
     base_url: str
