@@ -2,73 +2,104 @@ import os
 import sys
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-
-# Get the absolute path of the parent directory (your project root)
 project_root = os.path.dirname(script_dir)
-
-# Add the project root to the system path
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+import time
+from loguru import logger
+
 import mlflow
 import mlflow.xgboost
-import time
 import pandas as pd
-from sklearn.metrics import f1_score
+import xgboost as xgb
+from mlflow.models import infer_signature
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sklearn.model_selection import train_test_split
-from xgboost import XGBClassifier
 
 from core import constant
 
 MLFLOW_S3_ENDPOINT_URL = os.environ.get(
-    "MLFLOW_S3_ENDPOINT_URL", "http://127.0.0.1:9090"
+    "MLFLOW_S3_ENDPOINT_URL", "http://127.0.0.1:9002"
 )
 
 timestamp = time.time()
 
-mlflow.set_tracking_uri("http://localhost:5050")
+mlflow.xgboost.autolog()
+
+mlflow.set_tracking_uri("http://127.0.0.1:5050")
 mlflow.set_experiment(f"churn_prediction_{timestamp}")
 
+
 def run_training():
-    print("Loading data...")
+    logger.info("Loading data...")
     df = pd.read_csv("data/preprocessed/train.csv")
 
     X = df.drop(constant.TARGET, axis=1)
     y = df[constant.TARGET]
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.1, random_state=24
+        X, y, test_size=0.1, random_state=42
     )
 
-    print("Building model...")
-    xgb = XGBClassifier()
-
     with mlflow.start_run() as run:
-        print("Training model...")
-        xgb.fit(X_train, y_train)
+        params = {"objective": "binary:logistic", "random_state": 42}
 
-        print("Evaluating model...")
-        yhat = xgb.predict(X_test)
-        f1 = f1_score(y_test, yhat)
+        mlflow.log_params(params)
 
-        print(f"F1 Score: {f1:.4f}")
+        dtrain = xgb.DMatrix(X_train, label=y_train)
+        dtest = xgb.DMatrix(X_test, label=y_test)
 
-        print("Logging parameters...")
-        mlflow.log_params(xgb.get_params())
+        eval_results = {}
 
-        print("Logging metrics...")
-        mlflow.log_metric("f1_score", f1)
-
-        print("Logging XGBoost model...")
-        mlflow.xgboost.log_model(
-            xgb_model=xgb,
-            name="model",
-            registered_model_name="churn-predictor-xgb",
-            input_example=X_train.values[:5] if isinstance(X_train, pd.DataFrame) else X_train[:5]
+        logger.info("Building model...")
+        model = xgb.train(
+            params=params,
+            dtrain=dtrain,
+            num_boost_round=100,
+            evals=[(dtrain, "train"), (dtest, "test")],
+            evals_result=eval_results,
+            verbose_eval=5
         )
 
-        print(f"Run ID: {run.info.run_id}")
-        print("Training complete.")
+        logger.info("Eval result:")
+        logger.debug(str(eval_results))
+
+        logger.info("Logging training metric...")
+        for epoch, (train_metrics, test_metrics) in enumerate(
+            zip(eval_results["train"]["logloss"], eval_results["test"]["logloss"])
+        ):
+            logger.debug(f"Epoch: {epoch} - train_logloss: {train_metrics} - test_logloss: {test_metrics}")
+            mlflow.log_metrics(
+                {"train_logloss": train_metrics, "test_logloss": test_metrics}, step=epoch
+            )
+
+        logger.info("Evaluating model...")
+        yhat_proba = model.predict(dtest)
+        yhat = (yhat_proba > 0.5).astype(int)
+
+        final_metrics = {
+            "accuracy": accuracy_score(y_test, yhat),
+            "f1_score": f1_score(y_test, yhat),
+            "roc_auc": roc_auc_score(y_test, yhat_proba),
+        }
+
+        logger.info("Evaluating final metric...")
+        mlflow.log_metrics(final_metrics)
+
+        logger.info("Logging model...")
+        signature = infer_signature(X_train, yhat_proba)
+
+        logger.info("Signature:")
+        logger.debug(signature)
+        mlflow.xgboost.log_model(
+            xgb_model=model,
+            name="model",
+            signature=signature,
+            registered_model_name="XGBoostChurnModel",
+            input_example=X_train[:5],
+            model_format="json"
+        )
 
 
 if __name__ == "__main__":

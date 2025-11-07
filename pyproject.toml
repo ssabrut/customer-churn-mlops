@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi[standard]>=0.119.1",
+    "loguru>=0.7.3",
     "matplotlib>=3.10.7",
     "mlflow>=3.5.1",
     "numpy>=2.2.6",
