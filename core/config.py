@@ -14,8 +14,7 @@ class Settings(DefaultSettings):
     service_name: str = "churn-api"
 
     # MLflow config
-    mlflow_s3_endpoint_url: str = "http://s3:9000"
-    mlflow_s3_ignore_tls: bool = "true"
+    mlflow_s3_endpoint_url: str = "http://127.0.0.1:9002"
 
 
 def get_settings() -> Settings:

@@ -1,19 +1,24 @@
 import os
 import mlflow
 import mlflow.tracking
+from httpx import AsyncClient, RequestError, ConnectError, TimeoutException
 from mlflow.pyfunc import PyFuncModel
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict
+
+from core.config import Settings
+from core.schemas.response import HealthCheckResponse
 
 class MLflowClient:
+    base_url: str
     _instance: Optional["MLflowClient"] = None
     _initialized: bool = False
 
-    def __new__(cls) -> "MLflowClient":
-        if cls._instance is None:
-            cls._instance = super(MLflowClient, cls).__new__(cls)
-        return cls._instance
+    def __init__(self, settings: Settings) -> None:
+        if not isinstance(settings, Settings):
+            raise TypeError("Argument 'settings' must be an instance of the Settings class")
 
-    def __init__(self) -> None:
+        self.base_url = settings.mlflow_s3_endpoint_url
+
         if self._initialized:
             return 
 
@@ -25,6 +30,33 @@ class MLflowClient:
         
         self._initialized = True
         print("MLflowClient initialized.")
+
+    async def health_check(self) -> Dict[str, str]:
+        try:
+            async with AsyncClient(timeout=5.) as client:
+                url = self.base_url
+                response = await client.get(url)
+
+                if response.status_code == 200:
+                    return {
+                        "status": "healthy",
+                        "message": "MLflow service is running"
+                    }
+                else:
+                    return {
+                        "status": "unhealthy",
+                        "message": f"HTTP {response.status_code}"
+                    }
+        except (ConnectError, TimeoutException) as e:
+            return {
+                "status": "unhealthy",
+                "message": f"Connection to MLflow failed: {e}"
+            }
+        except RequestError as e:
+            return {
+                "status": "unhealthy",
+                "message": "Request to MLflow failed: {e}"
+            }
 
     def _configure_client(self) -> None:
         self.tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
