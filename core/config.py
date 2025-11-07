@@ -13,6 +13,14 @@ class Settings(DefaultSettings):
     environment: str = "development"
     service_name: str = "churn-api"
 
+    # MLflow config
+    mlflow_s3_endpoint_url: str = "http://s3:9000"
+    mlflow_s3_ignore_tls: bool = "true"
+
+
+def get_settings() -> Settings:
+    return Settings()
+
 
 def get_settings() -> Settings:
     return Settings()
