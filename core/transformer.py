@@ -26,12 +26,20 @@ class ChurnFeatureTransformer(BaseEstimator, TransformerMixin):
 
     def transform(self, X: pd.DataFrame, y=None):
         _X = X.copy()
+        cols_to_drop = ["Id", "Tenure", "Usage Frequency", "Subscription Type", "Contract Length", "Churn"]
+        if all(col in _X.columns for col in cols_to_drop):
+            _X = _X.drop(cols_to_drop, axis=1)
 
         # one hot encode gender
         gender_ohe = pd.get_dummies(_X["Gender"], dtype=np.int8)
         _X = _X.drop(["Gender"], axis=1)
         _X = _X.join(gender_ohe)
-
+        if "Female" in _X.columns and "Male" in _X.columns:
+            _X = _X.drop(["Female"], axis=1)
+        elif "Female" in _X.columns:
+            _X["Male"] = 0
+            _X = _X.drop(["Female"], axis=1)
+        
         # bin age
         _X["Age Group"] = _X["Age"].apply(self._classify_age_group)
 
@@ -41,9 +49,6 @@ class ChurnFeatureTransformer(BaseEstimator, TransformerMixin):
         # map the age group and interaction company
         _X["Age Group"] = _X["Age Group"].apply(lambda age: self.AGE_MAPPING[age])
         _X["Interaction Frequency"] = _X["Interaction Frequency"].apply(lambda age: self.INTERACTION_MAPPING[age])
-
-        columns = _X.columns
-        _X = pd.DataFrame(self.scaler.fit_transform(_X), columns=columns)
         return _X
 
     def _classify_age_group(self, age: int):

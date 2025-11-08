@@ -1,13 +1,12 @@
 from pydantic import BaseModel, Field
 
 class ChurnRequest(BaseModel):
-    Age: float = Field(..., alias="Customer Age")
+    Age: float = Field(..., alias="Age")
     Support_Calls: float  = Field(..., alias="Support Calls")
     Payment_Delay: float = Field(..., alias="Payment Delay")
     Total_Spend: float = Field(..., alias="Total Spend")
     Last_Interaction: float = Field(..., alias="Last Interaction")
-    Gender: str = Field("Customer Gender")
-
+    Gender: str = Field("Gender")
     class Config:
         populate_by_name = True
         json_schema_extra = {
@@ -22,5 +21,5 @@ class ChurnRequest(BaseModel):
         }
 
 class ChurnResponse(BaseModel):
-    churn_prediction: int
+    prediction: int
     version: str
