@@ -10,7 +10,6 @@ class AgeBinner(BaseEstimator, TransformerMixin):
         bins = [17, 24, 39, 59, 100]
         labels = ['Young Adult', 'Adult', 'Mid-Career', 'Senior']
         _X['Age_Group'] = pd.cut(_X['Age'], bins=bins, labels=labels, right=True)
-        _X = _X.drop('Age', axis=1)
         return _X
 
 class InteractionBinner(BaseEstimator, TransformerMixin):
@@ -22,5 +21,4 @@ class InteractionBinner(BaseEstimator, TransformerMixin):
         bins = [0, 7, 15, float('inf')]
         labels = ['Highly Active', 'Active', 'Dormant']
         _X['Interaction_Frequency'] = pd.cut(_X['Last Interaction'], bins=bins, labels=labels, right=True)
-        _X = _X.drop('Last Interaction', axis=1)
         return _X
