@@ -24,7 +24,7 @@ services:
       timeout: 5s
       retries: 5
 
-  mc-setup:
+  mc_setup:
     image: minio/mc
     restart: "no"
     env_file:
@@ -44,20 +44,44 @@ services:
         echo 'Bucket mlartifacts created and policy set.';
       "
 
-  db:
-    image: postgres:15
+  mlflow_db:
+    image: postgres:16
     container_name: mlflow_db
     restart: always
+    env_file:
+      - .env
     environment:
-      - POSTGRES_USER=mlflow
-      - POSTGRES_PASSWORD=mlflow
-      - POSTGRES_DB=mlflow
+      - POSTGRES_USER=${MLFLOW_DB_USER}
+      - POSTGRES_PASSWORD=${MLFLOW_DB_PASSWORD}
+      - POSTGRES_DB=${MLFLOW_DB_NAME}
     ports:
       - "5432:5432"
     volumes:
       - mlflow_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mlflow"]
+      test: ["CMD-SHELL", "pg_isready -U ${MLFLOW_DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  app_db:
+    image: postgres:16
+    container_name: app_db
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${APP_DB_USER}
+      - POSTGRES_PASSWORD=${APP_DB_PASSWORD}
+      - POSTGRES_DB=${APP_DB_NAME}
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${APP_DB_USER}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -74,23 +98,44 @@ services:
       - "5050:5000"
     env_file:
       - .env
-    environment:
-      - MLFLOW_S3_ENDPOINT_URL=http://s3:9000
     networks:
       - public
       - internal
     depends_on:
-      db:
+      mlflow_db:
         condition: service_healthy
-      mc-setup:
+      mc_setup:
         condition: service_completed_successfully
-    entrypoint: mlflow server --host 0.0.0.0 --artifacts-destination s3://mlartifacts --backend-store-uri postgresql://mlflow:mlflow@db:5432/mlflow
+    entrypoint: mlflow server --host 0.0.0.0 --artifacts-destination s3://mlartifacts --backend-store-uri postgresql://mlflow:mlflow@mlflow_db:5432/mlflow
+
+  redis:
+    image: redis:6.2-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - feast_net
+  jupyter:
+    image: jupyter/scipy-notebook:latest
+    container_name: jupyter
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/home/jovyan/work
+    command: >
+      sh -c "pip install feast[redis] pandas scikit-learn &&
+             start-notebook.sh --NotebookApp.token='' --NotebookApp.password=''"
+    networks:
+      - feast_net
 
 networks:
+  feast_net:
+    driver: bridge
   internal:
   public:
     driver: bridge
 
 volumes:
   mlflow_postgres_data:
+  postgres_data:
   minio_new_volume:
