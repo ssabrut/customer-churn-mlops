@@ -5,6 +5,8 @@ services:
     ports:
       - "9002:9000"
       - "9001:9001"
+    env_file:
+      - .env
     environment:
       - MINIO_ROOT_USER=${AWS_ACCESS_KEY_ID}
       - MINIO_ROOT_PASSWORD=${AWS_SECRET_ACCESS_KEY}
@@ -27,10 +29,10 @@ services:
   mc_setup:
     image: minio/mc
     restart: "no"
-    env_file:
-      - .env
     networks:
       - internal
+    env_file:
+      - .env
     depends_on:
       s3:
         condition: service_healthy
@@ -88,16 +90,95 @@ services:
     networks:
       - internal
 
+  airflow_db:
+    image: postgres:16
+    container_name: airflow_db
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${AIRFLOW_DB_USER}
+      - POSTGRES_PASSWORD=${AIRFLOW_DB_PASSWORD}
+      - POSTGRES_DB=${AIRFLOW_DB_NAME}
+    ports:
+      - "5436:5432"
+    volumes:
+      - airflow_posstgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  airflow-init:
+    image: apache/airflow:2.8.0
+    restart: "no"
+    depends_on:
+      airflow_db:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    env_file:
+      - .env
+    command: >
+      -c "
+        echo 'Waiting 5s for DB to be fully ready...';
+        sleep 5;
+        echo 'Initializing/Upgrading Airflow database...';
+        airflow db upgrade;
+        echo 'Creating Airflow admin user (if not exists)...';
+        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true;
+        echo 'Initialization complete.';
+      "
+    networks:
+      - internal
+
+  airflow-webserver:
+    image: apache/airflow:2.8.0
+    restart: always
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    networks:
+      - public
+      - internal
+    command: airflow webserver
+
+  airflow-scheduler:
+    image: apache/airflow:2.8.0
+    restart: always
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+    networks:
+      - internal
+    command: airflow scheduler
+
   mlflow:
     build:
       context: ./docker
       dockerfile: mlflow.Dockerfile
     container_name: tracker_mlflow
     restart: unless-stopped
-    ports:
-      - "5050:5000"
     env_file:
       - .env
+    ports:
+      - "5050:5000"
     networks:
       - public
       - internal
@@ -106,25 +187,13 @@ services:
         condition: service_healthy
       mc_setup:
         condition: service_completed_successfully
-    entrypoint: mlflow server --host 0.0.0.0 --artifacts-destination s3://mlartifacts --backend-store-uri postgresql://mlflow:mlflow@mlflow_db:5432/mlflow
+    entrypoint: mlflow server --host 0.0.0.0 --artifacts-destination s3://mlartifacts --backend-store-uri postgresql://${MLFLOW_DB_USER}:${MLFLOW_DB_PASSWORD}@mlflow_db:5432/${MLFLOW_DB_NAME}
 
   redis:
     image: redis:6.2-alpine
     container_name: redis
     ports:
       - "6379:6379"
-    networks:
-      - feast_net
-  jupyter:
-    image: jupyter/scipy-notebook:latest
-    container_name: jupyter
-    ports:
-      - "8888:8888"
-    volumes:
-      - .:/home/jovyan/work
-    command: >
-      sh -c "pip install feast[redis] pandas scikit-learn &&
-             start-notebook.sh --NotebookApp.token='' --NotebookApp.password=''"
     networks:
       - feast_net
 
@@ -136,6 +205,7 @@ networks:
     driver: bridge
 
 volumes:
+  airflow_posstgres_data:
+  minio_new_volume:
   mlflow_postgres_data:
   postgres_data:
-  minio_new_volume:

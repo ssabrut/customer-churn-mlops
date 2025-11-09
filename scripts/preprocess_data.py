@@ -36,20 +36,16 @@ logger.info("Transforming data for Feast...")
 if "Id" in df.columns:
     df.rename(columns={"Id": "customer_id"}, inplace=True)
 
-# Simulate timestamps (Feast needs these)
 df["event_timestamp"] = [
     datetime.now() - timedelta(days=365 - i % 365) for i in range(len(df))
 ]
 df["created_timestamp"] = datetime.now()
 
-# Drop the target variable (Feast only stores features)
 if "Churn" in df.columns:
     df = df.drop("Churn", axis=1)
 
-# --- 4. LOAD ---
 logger.info(f"Saving features to offline store at: {OUTPUT_PATH}")
 
-# Ensure the 'data/' directory exists
 os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
 
 df.to_parquet(OUTPUT_PATH, index=False)
