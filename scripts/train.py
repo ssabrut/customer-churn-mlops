@@ -11,9 +11,7 @@ from loguru import logger
 import mlflow
 import mlflow.sklearn
 import pandas as pd
-import xgboost as xgb
 from xgboost import XGBClassifier
-from mlflow.models import infer_signature
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
@@ -28,6 +26,14 @@ EXPERIMENT_NAME = "churn_prediction"
 MODEL_NAME = "XGBoostChurnModel"
 
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+
+experiment = mlflow.get_experiment_by_name(EXPERIMENT_NAME)
+if experiment is None:
+    logger.info(f"Creating new MLflow experiment: {EXPERIMENT_NAME}")
+    mlflow.create_experiment(EXPERIMENT_NAME)
+
+mlflow.set_experiment(EXPERIMENT_NAME)
+logger.info(f"MLflow configured. Experiment: {EXPERIMENT_NAME}")
 
 logger.info("Loading data...")
 df = pd.read_parquet("data/preprocessed/train.parquet")
@@ -64,7 +70,14 @@ with mlflow.start_run() as run:
     logger.info("Evaluating model...")
     yhat = pipeline.predict(X_test)
     f1 = f1_score(y_test, yhat)
-    mlflow.log_metric("f1_score", f1)
+    accuracy = accuracy_score(y_test, yhat)
+    auc_score = roc_auc_score(y_test, yhat)
+
+    mlflow.log_metrics({
+        "f1_score": f1,
+        "accuracy": accuracy,
+        "roc_auc_curve": auc_score
+    })
 
     mlflow.sklearn.log_model(
         sk_model=pipeline,
@@ -83,8 +96,9 @@ with mlflow.start_run() as run:
         name=MODEL_NAME,
         version=new_version.version,
         stage="Staging",
-        archive_existing_versions=False # Don't archive old staging models
+        archive_existing_versions=False
     )
+    
     logger.success(f"Transitioned model version {new_version.version} to 'Staging'.")
     logger.info(f"Run ID: {run.info.run_id}")
     logger.success("Training complete.")

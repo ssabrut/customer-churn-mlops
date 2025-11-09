@@ -20,6 +20,8 @@ from core.routers.churn import router as churn_router
 
 try:
     settings: Settings = get_settings()
+    MODEL_NAME = "XGBoostChurnModel"
+    MODEL_STAGE = "Production"
 except ValidationError as e:
     logger.error(f"Application configuration is invalid.\n{e}")
     sys.exit(1)
@@ -27,19 +29,11 @@ except ValidationError as e:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     mlflow_client: MLflowClient = make_mlflow_service()
-    model, model_version = mlflow_client.load_model("XGBoostChurnModel", version=11)
+    model, model_version = mlflow_client.load_model(name=MODEL_NAME, stage=MODEL_STAGE)
 
-    data = pd.read_csv("data/raw/train.csv")
-    transformer = ChurnFeatureTransformer()
-    scaler = StandardScaler()
-    
-    transformed_data = transformer.transform(data)
-    scaler.fit(transformed_data)
-    
     app.state.settings = settings
     app.state.model = model
     app.state.model_version = model_version
-    app.state.scaler = scaler
     yield
 
 app = FastAPI(

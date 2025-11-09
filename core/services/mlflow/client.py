@@ -74,25 +74,19 @@ class MLflowClient:
     def client(self) -> mlflow.tracking.MlflowClient:
         return self._client
 
-    def get_model_version(self, name: str, version: int) -> str:
+    def get_model_version(self, name: str, stage: str) -> str:
         try:
-            model = self.client.get_model_version(name=name, version=version)
-            return model.version
-        except IndexError:
-            logger.warning(f"No model found for '{name}' in stage '{version}'.")
-            return "N/A"
+            versions = self.client.get_latest_versions(name=name, stages=[stage])
+            if not versions:
+                logger.warning(f"No model found for '{name}' in stage '{stage}'.")
+                return "N/A"
+            return versions[0].version # Return the version number as a string
         except Exception as e:
-            logger.error(f"Error getting model version: {e}")
+            logger.error(f"Error getting model version for stage '{stage}': {e}")
             return "N/A"
 
-    def load_model(self, name: str, version: int) -> Tuple[Optional[PyFuncModel], str]:
-        """
-        Loads a model from the MLflow registry.
-        Uses an in-memory cache to avoid re-loading on every call.
-        
-        Returns a (model, version) tuple or (None, "N/A") on failure.
-        """
-        cache_key = f"{name}:{version}"
+    def load_model(self, name: str, stage: str) -> Tuple[Optional[PyFuncModel], str]:
+        cache_key = f"{name}:{stage}"
         
         if cache_key in self.model_cache:
             logger.info(f"Loading model '{cache_key}' from cache.")
@@ -100,13 +94,10 @@ class MLflowClient:
 
         logger.info(f"Loading model '{cache_key}' from MLflow registry...")
         try:
-            model_uri = f"models:/{name}/{version}"
+            model_uri = f"models:/{name}/{stage}"
             model = mlflow.pyfunc.load_model(model_uri=model_uri)
             
-            # Get version for the cache
-            version = self.get_model_version(name, version)
-            
-            # Store in cache
+            version = self.get_model_version(name, stage)
             self.model_cache[cache_key] = (model, version)
             
             logger.success(f"Successfully loaded and cached model version: {version}")
