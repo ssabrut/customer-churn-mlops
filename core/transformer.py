@@ -3,6 +3,53 @@ import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import StandardScaler
 
+class AgeBinner(BaseEstimator, TransformerMixin):
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        _X = X.copy()
+        bins = [17, 24, 39, 59, 100]
+        labels = ['Young Adult', 'Adult', 'Mid-Career', 'Senior']
+        _X['Age_Group'] = pd.cut(_X['Age'], bins=bins, labels=labels, right=True)
+        _X = _X.drop('Age', axis=1)
+        return _X
+
+class InteractionBinner(BaseEstimator, TransformerMixin):
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        _X = X.copy()
+        bins = [0, 7, 15, float('inf')]
+        labels = ['Highly Active', 'Active', 'Dormant']
+        _X['Interaction_Frequency'] = pd.cut(_X['Last Interaction'], bins=bins, labels=labels, right=True)
+        _X = _X.drop('Last Interaction', axis=1)
+        return _X
+
+class AgeInteractionMapper(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        self.AGE_MAPPING = {
+            'Young Adult': 0,
+            'Adult': 1,
+            'Mid-Career': 2,
+            'Senior': 3
+        }
+        self.INTERACTION_MAPPING = {
+            'Highly Active': 0,
+            'Active': 1,
+            'Dormant': 2
+        }
+
+    def fit(self, X, y=None):
+        return self
+    
+    def transform(self, X):
+        _X = X.copy()
+        _X['Age_Group'] = _X['Age_Group'].map(self.AGE_MAPPING)
+        _X['Interaction_Frequency'] = _X['Interaction_Frequency'].map(self.INTERACTION_MAPPING)
+        return _X
+
 class ChurnFeatureTransformer(BaseEstimator, TransformerMixin):
     def __init__(self):
         super().__init__()

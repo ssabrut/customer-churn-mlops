@@ -5,6 +5,8 @@ from loguru import logger
 from sqlalchemy import create_engine
 from datetime import datetime, timedelta
 
+from core.transformer import ChurnFeatureTransformer
+
 DB_USER = os.environ.get("APP_DB_USER", "admin")
 DB_PASSWORD = os.environ.get("APP_DB_PASSWORD", "admin")
 DB_NAME = os.environ.get("APP_DB_NAME", "churn")
@@ -22,7 +24,6 @@ try:
     logger.info(f"Connecting to {DB_HOST}:{DB_PORT}...")
     df = pd.read_sql(f"SELECT * FROM {TABLE_NAME}", engine)
     logger.success(f"Successfully read {len(df)} rows from table '{TABLE_NAME}'.")
-
 except Exception as e:
     logger.error(f"\n[Error] Failed to connect or read from database: {e}", file=sys.stderr)
     logger.error("Please check:")
@@ -32,6 +33,10 @@ except Exception as e:
     sys.exit(1)
 
 logger.info("Transforming data for Feast...")
+
+transformer = ChurnFeatureTransformer()
+df = transformer.transform(df)
+df = pd.DataFrame()
 
 if "Id" in df.columns:
     df.rename(columns={"Id": "customer_id"}, inplace=True)
