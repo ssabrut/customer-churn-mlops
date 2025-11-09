@@ -9,14 +9,18 @@ if project_root not in sys.path:
 from loguru import logger
 
 import mlflow
-import mlflow.xgboost
+import mlflow.sklearn
 import pandas as pd
 import xgboost as xgb
+from xgboost import XGBClassifier
 from mlflow.models import infer_signature
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 from core import constant
+from core.utils.converting import DataFrameConverter
 
 MLFLOW_S3_ENDPOINT_URL = os.environ.get("MLFLOW_S3_ENDPOINT_URL", "http://127.0.0.1:9002")
 MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://127.0.0.1:5050")
@@ -26,7 +30,10 @@ MODEL_NAME = "XGBoostChurnModel"
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
 logger.info("Loading data...")
-df = pd.read_csv("data/preprocessed/train.csv")
+df = pd.read_parquet("data/preprocessed/train.parquet")
+cols_to_drop = ["event_timestamp", "created_timestamp"]
+if all(col in df.columns for col in cols_to_drop):
+    df = df.drop(cols_to_drop, axis=1)
 
 X = df.drop(constant.TARGET, axis=1)
 y = df[constant.TARGET]
@@ -35,64 +42,37 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.1, random_state=42
 )
 
+original_columns = X.columns
+
+logger.info("Building model...")
+params = {"objective": "binary:logistic", "random_state": 42}
+pipeline = Pipeline(steps=[
+    ("scaler", StandardScaler()),
+    ("to_dataframe", DataFrameConverter(column_names=original_columns)),
+    ('model', XGBClassifier(**params))
+])
+
 with mlflow.start_run() as run:
     run_id = run.info.run_id
     logger.info(f"Starting run: {run_id}")
-    params = {"objective": "binary:logistic", "random_state": 42}
 
     mlflow.log_params(params)
 
-    dtrain = xgb.DMatrix(X_train, label=y_train, enable_categorical=True)
-    dtest = xgb.DMatrix(X_test, label=y_test, enable_categorical=True)
-
-    eval_results = {}
-
-    logger.info("Building model...")
-    model = xgb.train(
-        params=params,
-        dtrain=dtrain,
-        num_boost_round=100,
-        evals=[(dtrain, "train"), (dtest, "test")],
-        evals_result=eval_results,
-        verbose_eval=5
-    )
-
-    logger.info("Eval result:")
-    logger.debug(str(eval_results))
-
-    logger.info("Logging training metric...")
-    for epoch, (train_metrics, test_metrics) in enumerate(
-        zip(eval_results["train"]["logloss"], eval_results["test"]["logloss"])
-    ):
-        logger.debug(f"Epoch: {epoch} - train_logloss: {train_metrics} - test_logloss: {test_metrics}")
-        mlflow.log_metrics(
-            {"train_logloss": train_metrics, "test_logloss": test_metrics}, step=epoch
-        )
+    logger.info("Training model...")
+    pipeline.fit(X_train, y_train)
 
     logger.info("Evaluating model...")
-    yhat_proba = model.predict(dtest)
-    yhat = (yhat_proba > 0.5).astype(int)
+    yhat = pipeline.predict(X_test)
+    f1 = f1_score(y_test, yhat)
+    mlflow.log_metric("f1_score", f1)
 
-    final_metrics = {
-        "accuracy": accuracy_score(y_test, yhat),
-        "f1_score": f1_score(y_test, yhat),
-        "roc_auc": roc_auc_score(y_test, yhat_proba),
-    }
-
-    logger.info("Evaluating final metric...")
-    mlflow.log_metrics(final_metrics)
-
-    logger.info("Logging model...")
-    signature = infer_signature(X_train, yhat_proba)
-
-    logger.info("Signature:")
-    model_info = mlflow.xgboost.log_model(
-        xgb_model=model,
-        artifact_path="model",
-        signature=signature,
+    mlflow.sklearn.log_model(
+        sk_model=pipeline,
+        name=MODEL_NAME,
         registered_model_name=MODEL_NAME,
-        input_example=X_train.values[:5],
-        model_format="json"
+        input_example=X_train.head(5),
+        model_type="json",
+        
     )
 
     logger.info("Transitioning new model to 'Staging'...")

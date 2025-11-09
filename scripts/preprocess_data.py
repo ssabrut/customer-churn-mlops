@@ -1,5 +1,11 @@
 import os
 import sys
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+    
 import pandas as pd
 from loguru import logger
 from sqlalchemy import create_engine
@@ -13,7 +19,7 @@ DB_NAME = os.environ.get("APP_DB_NAME", "churn")
 DB_HOST = "localhost"
 DB_PORT = "5435"
 TABLE_NAME = "raw_churn_data"
-OUTPUT_PATH = "data/preprocessed/customer_features.parquet"
+OUTPUT_PATH = "data/preprocessed/train.parquet"
 
 logger.info("Starting data preparation from database...")
 
@@ -36,7 +42,6 @@ logger.info("Transforming data for Feast...")
 
 transformer = ChurnFeatureTransformer()
 df = transformer.transform(df)
-df = pd.DataFrame()
 
 if "Id" in df.columns:
     df.rename(columns={"Id": "customer_id"}, inplace=True)
@@ -45,9 +50,6 @@ df["event_timestamp"] = [
     datetime.now() - timedelta(days=365 - i % 365) for i in range(len(df))
 ]
 df["created_timestamp"] = datetime.now()
-
-if "Churn" in df.columns:
-    df = df.drop("Churn", axis=1)
 
 logger.info(f"Saving features to offline store at: {OUTPUT_PATH}")
 

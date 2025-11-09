@@ -14,15 +14,17 @@ class ChurnFeatureTransformer(BaseEstimator, TransformerMixin):
     def fit(self, X: pd.DataFrame, y: Any = None) -> Any:
         return self
 
-    def transform(self, X: pd.DataFrame, y: Any = None) -> pd.DataFrame:
+    def transform(self, X: pd.DataFrame, y: Any = None, train: bool = True) -> pd.DataFrame:
         _X = X.copy()
-        cols_to_drop = ["Id", "Tenure", "Usage Frequency", "Subscription Type", "Contract Length", "Churn"]
+        cols_to_drop = ["Id", "Tenure", "Usage Frequency", "Subscription Type", "Contract Length"]
         if all(col in _X.columns for col in cols_to_drop):
             _X = _X.drop(cols_to_drop, axis=1)
+
+        if not train:
+            _X = _X.drop(["Churn"], axis=1)
 
         _X = GenderEncoder().transform(_X)
         _X = AgeBinner().transform(_X)
         _X =InteractionBinner().transform(_X)
         _X = AgeInteractionMapper().transform(_X)
-        print(_X.head())
         return _X
