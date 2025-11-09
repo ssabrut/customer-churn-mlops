@@ -7,7 +7,7 @@ requires-python = ">=3.10"
 dependencies = [
     "apache-airflow>=3.1.0",
     "apache-airflow-providers-docker>=4.4.4",
-    "black>=25.9.0",
+    "black[jupyter]>=25.9.0",
     "docker>=7.1.0",
     "fastapi[standard]>=0.119.1",
     "isort>=7.0.0",

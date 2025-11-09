@@ -6,21 +6,22 @@ project_root = os.path.dirname(script_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from loguru import logger
-
 import mlflow
 import mlflow.sklearn
 import pandas as pd
-from xgboost import XGBClassifier
+from loguru import logger
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from xgboost import XGBClassifier
 
 from core import constant
 from core.utils.converting import DataFrameConverter
 
-MLFLOW_S3_ENDPOINT_URL = os.environ.get("MLFLOW_S3_ENDPOINT_URL", "http://127.0.0.1:9002")
+MLFLOW_S3_ENDPOINT_URL = os.environ.get(
+    "MLFLOW_S3_ENDPOINT_URL", "http://127.0.0.1:9002"
+)
 MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://127.0.0.1:5050")
 EXPERIMENT_NAME = "churn_prediction"
 MODEL_NAME = "XGBoostChurnModel"
@@ -52,11 +53,13 @@ original_columns = X.columns
 
 logger.info("Building model...")
 params = {"objective": "binary:logistic", "random_state": 42}
-pipeline = Pipeline(steps=[
-    ("scaler", StandardScaler()),
-    ("to_dataframe", DataFrameConverter(column_names=original_columns)),
-    ('model', XGBClassifier(**params))
-])
+pipeline = Pipeline(
+    steps=[
+        ("scaler", StandardScaler()),
+        ("to_dataframe", DataFrameConverter(column_names=original_columns)),
+        ("model", XGBClassifier(**params)),
+    ]
+)
 
 with mlflow.start_run() as run:
     run_id = run.info.run_id
@@ -73,11 +76,9 @@ with mlflow.start_run() as run:
     accuracy = accuracy_score(y_test, yhat)
     auc_score = roc_auc_score(y_test, yhat)
 
-    mlflow.log_metrics({
-        "f1_score": f1,
-        "accuracy": accuracy,
-        "roc_auc_curve": auc_score
-    })
+    mlflow.log_metrics(
+        {"f1_score": f1, "accuracy": accuracy, "roc_auc_curve": auc_score}
+    )
 
     mlflow.sklearn.log_model(
         sk_model=pipeline,
@@ -85,7 +86,6 @@ with mlflow.start_run() as run:
         registered_model_name=MODEL_NAME,
         input_example=X_train.head(5),
         model_type="json",
-        
     )
 
     logger.info("Transitioning new model to 'Staging'...")
@@ -96,9 +96,9 @@ with mlflow.start_run() as run:
         name=MODEL_NAME,
         version=new_version.version,
         stage="Staging",
-        archive_existing_versions=False
+        archive_existing_versions=False,
     )
-    
+
     logger.success(f"Transitioned model version {new_version.version} to 'Staging'.")
     logger.info(f"Run ID: {run.info.run_id}")
     logger.success("Training complete.")

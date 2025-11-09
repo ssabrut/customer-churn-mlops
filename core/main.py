@@ -3,20 +3,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import sys
-import pandas as pd
-from loguru import logger
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from typing import AsyncIterator
+from loguru import logger
 from pydantic import ValidationError
-from contextlib import asynccontextmanager
-from sklearn.preprocessing import StandardScaler
 
 from core.config import Settings, get_settings
-from core.transformer import ChurnFeatureTransformer
-from core.services.mlflow.factory import make_mlflow_service
-from core.services.mlflow import MLflowClient
 from core.routers.churn import router as churn_router
+from core.services.mlflow import MLflowClient
+from core.services.mlflow.factory import make_mlflow_service
 
 try:
     settings: Settings = get_settings()
@@ -25,6 +23,7 @@ try:
 except ValidationError as e:
     logger.error(f"Application configuration is invalid.\n{e}")
     sys.exit(1)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -36,12 +35,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.model_version = model_version
     yield
 
+
 app = FastAPI(
     title=settings.service_name,
     description="A FastAPI service for a customer churn prediction",
     version=settings.app_version,
     root_path="/api/v1",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 origins = ["*"]
@@ -54,12 +54,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/")
 def root():
-    return {
-        "status": 200,
-        "message": "ok"
-    }
+    return {"status": 200, "message": "ok"}
+
 
 app.include_router(churn_router)
 

@@ -8,7 +8,6 @@ if project_root not in sys.path:
 
 from loguru import logger
 from mlflow import MlflowClient
-from mlflow.exceptions import MlflowException
 
 MODEL_NAME = "XGBoostChurnModel"
 COMPARISON_METRIC = "f1_score"
@@ -30,8 +29,10 @@ try:
     new_version = staging_versions[0]
     new_run = client.get_run(new_version.run_id)
     new_metric = new_run.data.metrics[COMPARISON_METRIC]
-    logger.info(f"New 'Staging' model found: Version {new_version.version} - {COMPARISON_METRIC}: {new_metric:.4f}")
-    
+    logger.info(
+        f"New 'Staging' model found: Version {new_version.version} - {COMPARISON_METRIC}: {new_metric:.4f}"
+    )
+
 except Exception as e:
     logger.error(f"Failed to get 'Staging' model: {e}")
     sys.exit(1)
@@ -44,7 +45,7 @@ try:
             name=MODEL_NAME,
             version=new_version.version,
             stage="Production",
-            archive_existing_versions=False
+            archive_existing_versions=False,
         )
 
         logger.success(f"Promoted Version {new_version.version} to 'Prodution'")
@@ -53,25 +54,27 @@ try:
     prod_version = prod_versions[0]
     prod_run = client.get_run(prod_version.run_id)
     prod_metric = prod_run.data.metrics[COMPARISON_METRIC]
-    logger.info(f"Current 'Production' model found: Version {prod_version.version} - {COMPARISON_METRIC}: {prod_metric:.4f}")
+    logger.info(
+        f"Current 'Production' model found: Version {prod_version.version} - {COMPARISON_METRIC}: {prod_metric:.4f}"
+    )
 except Exception as e:
     logger.error(f"Failed to get 'Production' model: {e}")
     sys.exit(1)
 
 if new_metric > prod_metric:
-    logger.success(f"New model (v{new_version.version}) is better! Promoting to 'Production'")
+    logger.success(
+        f"New model (v{new_version.version}) is better! Promoting to 'Production'"
+    )
     client.transition_model_version_stage(
         name=MODEL_NAME,
         version=new_version.version,
         stage="Production",
-        archive_existing_versions=True
+        archive_existing_versions=True,
     )
 else:
     logger.warning(f"New model (v{new_version.version}) is not better. Archiving!")
     client.transition_model_version_stage(
-        name=MODEL_NAME,
-        version=new_version.version,
-        stage="Archived"
+        name=MODEL_NAME, version=new_version.version, stage="Archived"
     )
 
 logger.info("Promotion script finished")

@@ -1,4 +1,5 @@
 deploy:
+	- docker build -t churn-mlops-image:latest .
 	- docker compose up -d --build
 
 down:

@@ -46,9 +46,9 @@ services:
         echo 'Bucket mlartifacts created and policy set.';
       "
 
-  mlflow_db:
+  mlflow_postgres:
     image: postgres:16
-    container_name: mlflow_db
+    container_name: mlflow_postgres
     restart: always
     env_file:
       - .env
@@ -68,9 +68,9 @@ services:
     networks:
       - internal
 
-  app_db:
+  app_postgres:
     image: postgres:16
-    container_name: app_db
+    container_name: app_postgres
     restart: always
     env_file:
       - .env
@@ -90,9 +90,9 @@ services:
     networks:
       - internal
 
-  airflow_db:
+  airflow_postgres:
     image: postgres:16
-    container_name: airflow_db
+    container_name: airflow_postgres
     restart: always
     env_file:
       - .env
@@ -116,7 +116,7 @@ services:
     image: apache/airflow:2.8.0
     restart: "no"
     depends_on:
-      airflow_db:
+      airflow_postgres:
         condition: service_healthy
     entrypoint: /bin/sh
     env_file:
@@ -183,11 +183,11 @@ services:
       - public
       - internal
     depends_on:
-      mlflow_db:
+      mlflow_postgres:
         condition: service_healthy
       mc_setup:
         condition: service_completed_successfully
-    entrypoint: mlflow server --host 0.0.0.0 --artifacts-destination s3://mlartifacts --backend-store-uri postgresql://${MLFLOW_DB_USER}:${MLFLOW_DB_PASSWORD}@mlflow_db:5432/${MLFLOW_DB_NAME}
+    entrypoint: mlflow server --host 0.0.0.0 --artifacts-destination s3://mlartifacts --backend-store-uri postgresql://${MLFLOW_DB_USER}:${MLFLOW_DB_PASSWORD}@mlflow_postgres:5432/${MLFLOW_DB_NAME}
 
   redis:
     image: redis:6.2-alpine
