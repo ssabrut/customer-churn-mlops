@@ -5,7 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "black>=25.9.0",
     "fastapi[standard]>=0.119.1",
+    "isort>=7.0.0",
     "loguru>=0.7.3",
     "matplotlib>=3.10.7",
     "mlflow>=3.5.1",

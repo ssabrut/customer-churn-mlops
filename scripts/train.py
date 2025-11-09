@@ -6,7 +6,6 @@ project_root = os.path.dirname(script_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-import time
 from loguru import logger
 
 import mlflow
@@ -19,88 +18,93 @@ from sklearn.model_selection import train_test_split
 
 from core import constant
 
-MLFLOW_S3_ENDPOINT_URL = os.environ.get(
-    "MLFLOW_S3_ENDPOINT_URL", "http://127.0.0.1:9002"
+MLFLOW_S3_ENDPOINT_URL = os.environ.get("MLFLOW_S3_ENDPOINT_URL", "http://127.0.0.1:9002")
+MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://127.0.0.1:5050")
+EXPERIMENT_NAME = "churn_prediction"
+MODEL_NAME = "XGBoostChurnModel"
+
+mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+
+logger.info("Loading data...")
+df = pd.read_csv("data/preprocessed/train.csv")
+
+X = df.drop(constant.TARGET, axis=1)
+y = df[constant.TARGET]
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.1, random_state=42
 )
 
-timestamp = time.time()
+with mlflow.start_run() as run:
+    run_id = run.info.run_id
+    logger.info(f"Starting run: {run_id}")
+    params = {"objective": "binary:logistic", "random_state": 42}
 
-mlflow.xgboost.autolog()
+    mlflow.log_params(params)
 
-mlflow.set_tracking_uri("http://127.0.0.1:5050")
-mlflow.set_experiment(f"churn_prediction_{timestamp}")
+    dtrain = xgb.DMatrix(X_train, label=y_train, enable_categorical=True)
+    dtest = xgb.DMatrix(X_test, label=y_test, enable_categorical=True)
 
+    eval_results = {}
 
-def run_training():
-    logger.info("Loading data...")
-    df = pd.read_csv("data/preprocessed/train.csv")
-
-    X = df.drop(constant.TARGET, axis=1)
-    y = df[constant.TARGET]
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.1, random_state=42
+    logger.info("Building model...")
+    model = xgb.train(
+        params=params,
+        dtrain=dtrain,
+        num_boost_round=100,
+        evals=[(dtrain, "train"), (dtest, "test")],
+        evals_result=eval_results,
+        verbose_eval=5
     )
 
-    with mlflow.start_run() as run:
-        params = {"objective": "binary:logistic", "random_state": 42}
+    logger.info("Eval result:")
+    logger.debug(str(eval_results))
 
-        mlflow.log_params(params)
-
-        dtrain = xgb.DMatrix(X_train, label=y_train)
-        dtest = xgb.DMatrix(X_test, label=y_test)
-
-        eval_results = {}
-
-        logger.info("Building model...")
-        model = xgb.train(
-            params=params,
-            dtrain=dtrain,
-            num_boost_round=100,
-            evals=[(dtrain, "train"), (dtest, "test")],
-            evals_result=eval_results,
-            verbose_eval=5
+    logger.info("Logging training metric...")
+    for epoch, (train_metrics, test_metrics) in enumerate(
+        zip(eval_results["train"]["logloss"], eval_results["test"]["logloss"])
+    ):
+        logger.debug(f"Epoch: {epoch} - train_logloss: {train_metrics} - test_logloss: {test_metrics}")
+        mlflow.log_metrics(
+            {"train_logloss": train_metrics, "test_logloss": test_metrics}, step=epoch
         )
 
-        logger.info("Eval result:")
-        logger.debug(str(eval_results))
+    logger.info("Evaluating model...")
+    yhat_proba = model.predict(dtest)
+    yhat = (yhat_proba > 0.5).astype(int)
 
-        logger.info("Logging training metric...")
-        for epoch, (train_metrics, test_metrics) in enumerate(
-            zip(eval_results["train"]["logloss"], eval_results["test"]["logloss"])
-        ):
-            logger.debug(f"Epoch: {epoch} - train_logloss: {train_metrics} - test_logloss: {test_metrics}")
-            mlflow.log_metrics(
-                {"train_logloss": train_metrics, "test_logloss": test_metrics}, step=epoch
-            )
+    final_metrics = {
+        "accuracy": accuracy_score(y_test, yhat),
+        "f1_score": f1_score(y_test, yhat),
+        "roc_auc": roc_auc_score(y_test, yhat_proba),
+    }
 
-        logger.info("Evaluating model...")
-        yhat_proba = model.predict(dtest)
-        yhat = (yhat_proba > 0.5).astype(int)
+    logger.info("Evaluating final metric...")
+    mlflow.log_metrics(final_metrics)
 
-        final_metrics = {
-            "accuracy": accuracy_score(y_test, yhat),
-            "f1_score": f1_score(y_test, yhat),
-            "roc_auc": roc_auc_score(y_test, yhat_proba),
-        }
+    logger.info("Logging model...")
+    signature = infer_signature(X_train, yhat_proba)
 
-        logger.info("Evaluating final metric...")
-        mlflow.log_metrics(final_metrics)
+    logger.info("Signature:")
+    model_info = mlflow.xgboost.log_model(
+        xgb_model=model,
+        artifact_path="model",
+        signature=signature,
+        registered_model_name=MODEL_NAME,
+        input_example=X_train.values[:5],
+        model_format="json"
+    )
 
-        logger.info("Logging model...")
-        signature = infer_signature(X_train, yhat_proba)
+    logger.info("Transitioning new model to 'Staging'...")
+    client = mlflow.MlflowClient()
 
-        logger.info("Signature:")
-        logger.debug(signature)
-        mlflow.xgboost.log_model(
-            xgb_model=model,
-            name="model",
-            signature=signature,
-            registered_model_name="XGBoostChurnModel",
-            input_example=X_train[:5],
-            model_format="json"
-        )
-
-
-if __name__ == "__main__":
-    run_training()
+    new_version = client.search_model_versions(f"run_id='{run_id}'")[0]
+    client.transition_model_version_stage(
+        name=MODEL_NAME,
+        version=new_version.version,
+        stage="Staging",
+        archive_existing_versions=False # Don't archive old staging models
+    )
+    logger.success(f"Transitioned model version {new_version.version} to 'Staging'.")
+    logger.info(f"Run ID: {run.info.run_id}")
+    logger.success("Training complete.")
