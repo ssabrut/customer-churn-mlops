@@ -5,12 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.9,<3.11"
 dependencies = [
-    "apache-airflow>=3.0.6",
+    "apache-airflow-providers-cncf-kubernetes>=10.6.0",
     "apache-airflow-providers-docker>=4.4.0",
     "black[jupyter]>=25.11.0",
     "docker>=7.1.0",
     "fastapi[standard]>=0.117.1",
-    "feast[local,redis]>=0.47.0",
     "isort>=6.1.0",
     "loguru>=0.7.3",
     "matplotlib>=3.9.4",
@@ -25,4 +24,8 @@ dependencies = [
     "scikit-learn>=1.6.1",
     "seaborn>=0.13.2",
     "xgboost>=2.1.4",
+    "feast[redis]>=0.47.0",
+    "apache-airflow>=3.0.6",
+    "jq>=1.10.0",
+    "graphviz>=0.21",
 ]

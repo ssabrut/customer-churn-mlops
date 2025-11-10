@@ -70,8 +70,13 @@ logger.info(f"Saving features to offline store at: {OUTPUT_PATH}")
 
 os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
 
+start_timestamp = df["event_timestamp"].min().isoformat()
+end_timestamp = df["event_timestamp"].max().isoformat()
+
 df.to_parquet(OUTPUT_PATH, index=False)
 logger.success("\nData preparation complete!")
 
 print("--- Offline Store (Parquet) Head ---")
 print(df.head())
+
+print(f"{{\"start\": \"{start_timestamp}\", \"end\": \"{end_timestamp}\"}}")

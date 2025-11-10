@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     model, model_version = mlflow_client.load_model(name=MODEL_NAME, stage=MODEL_STAGE)
 
     try:
-        from feast import FeatureStore 
+        from feast import FeatureStore
 
         feast_store = FeatureStore(repo_path=settings.feast_repo_path)
         app.state.feast_store = feast_store

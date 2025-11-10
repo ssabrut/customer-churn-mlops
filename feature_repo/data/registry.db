@@ -2,12 +2,12 @@
 _
 @
 customer_idCustomer unique ID"customer_idJcustomer_churn
-œßÅÈØıÍª¿ÆÈà—“¶
+œßÅÈØıÍù©ÈÈÀ×ÏÌ
 D
 %
 __dummy"
 __dummy_idJcustomer_churn
-œßÅÈğşÊª¿ÆÈ¸Å–¶1"$ccee3b5f-07e3-45a9-8105-04574364a2ed*ª¿ÆÈØËÈ¶2¹
+œßÅÈğşÊù©ÈÈÈéÖÌ1"$9e252193-db46-463c-93ce-7547078341f8*ù©ÈÈˆÇ Í2¹
 ‡
 customer_featurescustomer_churncustomer_id"
 Age"
@@ -24,4 +24,4 @@ __dummy_idJcustomer_churn
 ıï¼ªı½ÆÈb¶event_timestamp*created_timestampZ$"../data/preprocessed/train.parquetŠ1feast.infra.offline_stores.file_source.FileSource¢"../data/preprocessed/train.parquetªcustomer_churnŠ/
 
 customer_churn
-œßÅÈˆëÔª¿ÆÈğµ©´
+œßÅÈˆëÔù©ÈÈÈĞ‘Ê
