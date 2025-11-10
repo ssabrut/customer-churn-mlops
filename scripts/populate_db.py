@@ -12,21 +12,37 @@ import time
 import pandas as pd
 from loguru import logger
 from sqlalchemy import create_engine
+from typing import Tuple
 
-DB_USER = os.environ.get("APP_DB_USER", "app_user_default")
-DB_PASSWORD = os.environ.get("APP_DB_PASSWORD", "app_pass_default")
-DB_NAME = os.environ.get("APP_DB_NAME", "app_data_default")
-
-DB_HOST = os.environ.get("APP_DB_HOST", "app_postgres")
-DB_PORT = os.environ.get("APP_DB_PORT", "5432")
+DEFAULT_APP_DB_USER = "admin"
+DEFAULT_APP_DB_PASSWORD = "admin"
+DEFAULT_APP_DB_NAME = "churn"
 TABLE_NAME = "raw_churn_data"
-
 CSV_PATH = "data/raw/train.csv"
 
+def get_db_config() -> Tuple[str, str, str, str, str]:
+    is_docker = os.environ.get("IS_DOCKER") == "true"
+
+    db_user = os.environ.get("APP_DB_USER", DEFAULT_APP_DB_USER)
+    db_password = os.environ.get("APP_DB_PASSWORD", DEFAULT_APP_DB_PASSWORD)
+    db_name = os.environ.get("APP_DB_NAME", DEFAULT_APP_DB_NAME)
+
+    if is_docker:
+        db_host = os.environ.get("DB_HOST", "app_postgres")
+        db_port = os.environ.get("DB_PORT", "5432")
+        logger.info("Running inside Docker. Connecting to internal service.")
+    else:
+        db_host = os.environ.get("DB_HOST_LOCAL", "localhost")
+        db_port = os.environ.get("DB_PORT_LOCAL", "5435") 
+        logger.info(f"Running locally. Connecting to host port {db_port}.")
+
+    return db_user, db_password, db_name, db_host, db_port
 
 def populate_database(retries: int = 5, delay: int = 5):
+    db_user, db_password, db_name, db_host, db_port = get_db_config()
+
     engine_url = (
-        f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+        f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
     )
 
     for i in range(retries):

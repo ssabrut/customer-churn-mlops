@@ -15,14 +15,18 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
+from feast import FeatureStore
 
 from core import constant
 from core.utils.converting import DataFrameConverter
 
 MLFLOW_S3_ENDPOINT_URL = os.environ.get("MLFLOW_S3_ENDPOINT_URL")
 MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI")
+FEAST_REPO_PATH = os.path.join(project_root, "feature_repo")
 EXPERIMENT_NAME = "churn_prediction"
 MODEL_NAME = "XGBoostChurnModel"
+
+store = FeatureStore(repo_path=FEAST_REPO_PATH)
 
 if not MLFLOW_TRACKING_URI or not MLFLOW_S3_ENDPOINT_URL:
     logger.error("MLFLOW_TRACKING_URI or MLFLOW_S3_ENDPOINT_URL is missing.")
@@ -40,14 +44,34 @@ if experiment is None:
 mlflow.set_experiment(EXPERIMENT_NAME)
 logger.info(f"MLflow configured. Experiment: {EXPERIMENT_NAME}")
 
+
 logger.info("Loading data...")
-df = pd.read_parquet("data/preprocessed/train.parquet")
+df = pd.read_parquet("data/preprocessed/train.parquet", columns=['customer_id', 'event_timestamp'])
+target_df = pd.read_parquet("data/preprocessed/train.parquet", columns=[constant.TARGET])
+
+training_data = store.get_historical_features(
+    entity_df=df,
+    features=[
+        "customer_features:Age",
+        "customer_features:Support_Calls",
+        "customer_features:Payment_Delay",
+        "customer_features:Total_Spend",
+        "customer_features:Last_Interaction",
+        "customer_features:Gender",
+    ],
+).to_dataframe()
+
+X_full = training_data.drop('customer_id', axis=1)
+y_full = target_df[constant.TARGET]
+
+combined_df = pd.concat([X_full, y_full], axis=1)
+
 cols_to_drop = ["event_timestamp", "created_timestamp"]
 if all(col in df.columns for col in cols_to_drop):
     df = df.drop(cols_to_drop, axis=1)
 
-X = df.drop(constant.TARGET, axis=1)
-y = df[constant.TARGET]
+X = combined_df.drop(constant.TARGET, axis=1)
+y = combined_df[constant.TARGET]
 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.1, random_state=42

@@ -1,0 +1,9 @@
+project: customer_churn
+registry: data/registry.db
+provider: local
+online_store:
+  type: redis
+  connection_string: "redis://redis:6379"
+offline_store:
+  type: file
+entity_key_serialization_version: 2

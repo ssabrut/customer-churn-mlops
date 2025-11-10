@@ -19,7 +19,7 @@ customer_source = FileSource(
 # Define the Feature View
 customer_features = FeatureView(
     name="customer_features",
-    entities=["customer_id"],
+    entities=[customer], 
     ttl=timedelta(days=365),
     source=customer_source,
     schema=[

@@ -11,29 +11,40 @@ from datetime import datetime, timedelta
 import pandas as pd
 from loguru import logger
 from sqlalchemy import create_engine
+from typing import Tuple
 
 from core.transformer import ChurnFeatureTransformer
 
-
-DB_USER = os.environ.get("APP_DB_USER", "app_user_default")
-DB_PASSWORD = os.environ.get("APP_DB_PASSWORD", "app_pass_default")
-DB_NAME = os.environ.get("APP_DB_NAME", "app_data_default")
-
-DB_HOST = os.environ.get("APP_DB_HOST", "app_postgres")
-DB_PORT = os.environ.get("APP_DB_PORT", "5432")
+DB_USER = os.environ.get("APP_DB_USER", "admin")
+DB_PASSWORD = os.environ.get("APP_DB_PASSWORD", "admin")
+DB_NAME = os.environ.get("APP_DB_NAME", "churn")
 TABLE_NAME = "raw_churn_data"
-
 OUTPUT_PATH = "data/preprocessed/train.parquet"
 
 logger.info("Starting data preparation from database...")
 
+def get_db_config() -> Tuple[str, str]:
+    is_docker = os.environ.get("IS_DOCKER") == "true"
+    
+    if is_docker:
+        db_host = os.environ.get("DB_HOST", "app_postgres")
+        db_port = os.environ.get("DB_PORT", "5432")
+        logger.info("Running inside Docker. Connecting to internal service.")
+    else:
+        db_host = os.environ.get("DB_HOST_LOCAL", "localhost")
+        db_port = os.environ.get("DB_PORT_LOCAL", "5435") 
+        logger.info(f"Running locally. Connecting to host port {db_port}.")
+
+    return db_host, db_port
+
 try:
+    db_host, db_port = get_db_config()
     engine_url = (
-        f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+        f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{db_host}:{db_port}/{DB_NAME}"
     )
     engine = create_engine(engine_url)
 
-    logger.info(f"Connecting to {DB_HOST}:{DB_PORT}...")
+    logger.info(f"Connecting to {db_host}:{db_port}...")
     df = pd.read_sql(f"SELECT * FROM {TABLE_NAME}", engine)
     logger.success(f"Successfully read {len(df)} rows from table '{TABLE_NAME}'.")
 except Exception as e:
