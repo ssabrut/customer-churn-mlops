@@ -9,34 +9,27 @@ if project_root not in sys.path:
 import mlflow
 import mlflow.sklearn
 import pandas as pd
+from feast import FeatureStore
 from loguru import logger
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
-from feast import FeatureStore
 
 from core import constant
+from core.config import load_mlops_config
 from core.utils.converting import DataFrameConverter
 
-def get_mlops_hosts():
-    """Determines hostnames based on execution environment."""
-    is_docker = os.environ.get("IS_DOCKER") == "true"
-    
-    if is_docker:
-        mlflow_host = "http://mlflow:5000"
-        s3_host = "http://s3:9000"
-        logger.info("Running inside Docker. Using internal service hosts (mlflow:5000, s3:9000).")
-    else:
-        mlflow_host = os.environ.get("MLFLOW_TRACKING_URI_LOCAL", "http://localhost:5050")
-        s3_host = os.environ.get("MLFLOW_S3_ENDPOINT_URL_LOCAL", "http://localhost:9002")
-        logger.info(f"Running locally. Using exposed hosts ({mlflow_host}, {s3_host}).")
-    
-    return mlflow_host, s3_host
+try:
+    config = load_mlops_config(project_root)
+except EnvironmentError as e:
+    logger.error(f"Configuration failed to load: {e}")
+    sys.exit(1)
 
-MLFLOW_TRACKING_URI, MLFLOW_S3_ENDPOINT_URL = get_mlops_hosts()
-FEAST_REPO_PATH = os.path.join(project_root, "feature_repo")
+MLFLOW_TRACKING_URI = config.mlflow_uri
+MLFLOW_S3_ENDPOINT_URL = config.s3_uri
+FEAST_REPO_PATH = config.feast_repo_path
 EXPERIMENT_NAME = "churn_prediction"
 MODEL_NAME = "XGBoostChurnModel"
 
@@ -60,8 +53,13 @@ logger.info(f"MLflow configured. Experiment: {EXPERIMENT_NAME}")
 
 
 logger.info("Loading data...")
-df = pd.read_parquet(f"{project_root}/data/preprocessed/train.parquet", columns=['customer_id', 'event_timestamp'])
-target_df = pd.read_parquet(f"{project_root}/data/preprocessed/train.parquet", columns=[constant.TARGET])
+df = pd.read_parquet(
+    f"{project_root}/data/preprocessed/train.parquet",
+    columns=["customer_id", "event_timestamp"],
+)
+target_df = pd.read_parquet(
+    f"{project_root}/data/preprocessed/train.parquet", columns=[constant.TARGET]
+)
 
 training_data = store.get_historical_features(
     entity_df=df,

@@ -1,25 +1,24 @@
-from feast import Entity, FeatureView, FileSource, Field, ValueType
-from feast.types import Float32, Int32
 from datetime import timedelta
+
+from feast import Entity, FeatureView, Field, FileSource, ValueType
+from feast.types import Float32, Int32
 
 # Define the Entity
 customer = Entity(
-    name="customer_id", 
-    value_type=ValueType.INT64, 
-    description="Customer unique ID"
+    name="customer_id", value_type=ValueType.INT64, description="Customer unique ID"
 )
 
 # Define the Offline Data Source
 customer_source = FileSource(
     path="../data/preprocessed/train.parquet",
     timestamp_field="event_timestamp",
-    created_timestamp_column="created_timestamp"
+    created_timestamp_column="created_timestamp",
 )
 
 # Define the Feature View
 customer_features = FeatureView(
     name="customer_features",
-    entities=[customer], 
+    entities=[customer],
     ttl=timedelta(days=365),
     source=customer_source,
     schema=[

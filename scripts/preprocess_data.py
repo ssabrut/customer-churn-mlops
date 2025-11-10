@@ -7,40 +7,36 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from datetime import datetime, timedelta
+from typing import Tuple
 
 import pandas as pd
 from loguru import logger
 from sqlalchemy import create_engine
-from typing import Tuple
 
+from core.config import load_mlops_config
 from core.transformer import ChurnFeatureTransformer
 
-DB_USER = os.environ.get("APP_DB_USER", "admin")
-DB_PASSWORD = os.environ.get("APP_DB_PASSWORD", "admin")
-DB_NAME = os.environ.get("APP_DB_NAME", "churn")
 TABLE_NAME = "raw_churn_data"
-OUTPUT_PATH = "data/preprocessed/train.parquet"
+OUTPUT_PATH = f"{project_root}/data/preprocessed/train.parquet"
+
+try:
+    config = load_mlops_config(project_root)
+except EnvironmentError as e:
+    logger.error(f"Configuration failed to load: {e}")
+    sys.exit(1)
 
 logger.info("Starting data preparation from database...")
 
-def get_db_config() -> Tuple[str, str]:
-    is_docker = os.environ.get("IS_DOCKER") == "true"
-    
-    if is_docker:
-        db_host = os.environ.get("DB_HOST", "app_postgres")
-        db_port = os.environ.get("DB_PORT", "5432")
-        logger.info("Running inside Docker. Connecting to internal service.")
-    else:
-        db_host = os.environ.get("DB_HOST_LOCAL", "localhost")
-        db_port = os.environ.get("DB_PORT_LOCAL", "5435") 
-        logger.info(f"Running locally. Connecting to host port {db_port}.")
-
-    return db_host, db_port
-
 try:
-    db_host, db_port = get_db_config()
+    db_user = config.app_db_user
+    db_password = config.app_db_password
+    db_name = config.app_db_name
+    db_host = config.db_host
+    db_port = config.db_port
+
+    logger.info("Starting data preparation from database...")
     engine_url = (
-        f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{db_host}:{db_port}/{DB_NAME}"
+        f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
     )
     engine = create_engine(engine_url)
 

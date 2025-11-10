@@ -29,11 +29,13 @@ async def predict_customer_churn(
             "customer_features:Last_Interaction",
             "customer_features:Gender",
         ],
-        entity_rows=[{"customer_id": customer_id}]
+        entity_rows=[{"customer_id": customer_id}],
     ).to_dict()
 
     feature_data = {
-        key.split(':')[1]: val[0] for key, val in online_features.items() if key != 'customer_id'
+        key.split(":")[1]: val[0]
+        for key, val in online_features.items()
+        if key != "customer_id"
     }
 
     input_df = pd.DataFrame([feature_data])

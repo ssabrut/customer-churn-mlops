@@ -9,22 +9,18 @@ if project_root not in sys.path:
 from loguru import logger
 from mlflow import MlflowClient
 
-def get_mlflow_uri():
-    is_docker = os.environ.get("IS_DOCKER") == "true"
-    
-    if is_docker:
-        tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "http://mlflow:5000")
-        logger.info("Running inside Docker. Using internal MLflow host.")
-    else:
-        tracking_uri = os.environ.get("MLFLOW_TRACKING_URI_LOCAL", "http://localhost:5050")
-        logger.info(f"Running locally. Using exposed MLflow host: {tracking_uri}.")
-    
-    return tracking_uri
+from core.config import load_mlops_config
 
 MODEL_NAME = "XGBoostChurnModel"
 COMPARISON_METRIC = "f1_score"
 
-mlflow_tracking_uri = get_mlflow_uri()
+try:
+    config = load_mlops_config(project_root)
+except EnvironmentError as e:
+    logger.error(f"Configuration failed to load: {e}")
+    sys.exit(1)
+
+mlflow_tracking_uri = config.mlflow_uri
 if not mlflow_tracking_uri:
     logger.error("MLFLOW_TRACKING_URI environment variable not set.")
     sys.exit(1)
