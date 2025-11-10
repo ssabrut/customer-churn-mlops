@@ -19,12 +19,16 @@ from xgboost import XGBClassifier
 from core import constant
 from core.utils.converting import DataFrameConverter
 
-MLFLOW_S3_ENDPOINT_URL = os.environ.get(
-    "MLFLOW_S3_ENDPOINT_URL", "http://127.0.0.1:9002"
-)
-MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://127.0.0.1:5050")
+MLFLOW_S3_ENDPOINT_URL = os.environ.get("MLFLOW_S3_ENDPOINT_URL")
+MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI")
 EXPERIMENT_NAME = "churn_prediction"
 MODEL_NAME = "XGBoostChurnModel"
+
+if not MLFLOW_TRACKING_URI or not MLFLOW_S3_ENDPOINT_URL:
+    logger.error("MLFLOW_TRACKING_URI or MLFLOW_S3_ENDPOINT_URL is missing.")
+    raise EnvironmentError(
+        "MLflow environment variables must be set by the Airflow DockerOperator."
+    )
 
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
@@ -80,6 +84,7 @@ with mlflow.start_run() as run:
         {"f1_score": f1, "accuracy": accuracy, "roc_auc_curve": auc_score}
     )
 
+    logger.info("Logging model...")
     mlflow.sklearn.log_model(
         sk_model=pipeline,
         name=MODEL_NAME,

@@ -4,18 +4,18 @@ from airflow import DAG
 from airflow.providers.docker.operators.docker import DockerOperator
 
 db_env_vars = {
-    "APP_DB_USER": "${APP_DB_USER}",
-    "APP_DB_PASSWORD": "${APP_DB_PASSWORD}",
-    "APP_DB_NAME": "${APP_DB_NAME}",
-    "APP_DB_HOST": "localhost",
-    "APP_DB_PORT": "5435",
+    "APP_DB_USER": "admin",
+    "APP_DB_PASSWORD": "admin",
+    "APP_DB_NAME": "churn",
+    "APP_DB_HOST": "app_postgres",
+    "APP_DB_PORT": "5432",
 }
 
 mlflow_env_vars = {
-    "MLFLOW_TRACKING_URI": "${MLFLOW_TRACKING_URI}",
-    "MLFLOW_S3_ENDPOINT_URL": "${MLFLOW_S3_ENDPOINT_URL}",
-    "AWS_ACCESS_KEY_ID": "${AWS_ACCESS_KEY_ID}",
-    "AWS_SECRET_ACCESS_KEY": "${AWS_SECRET_ACCESS_KEY}",
+    "MLFLOW_TRACKING_URI": "http://mlflow:5000",
+    "MLFLOW_S3_ENDPOINT_URL": "http://s3:9000",
+    "AWS_ACCESS_KEY_ID": "churnadmin",
+    "AWS_SECRET_ACCESS_KEY": "churnadmin",
 }
 
 with DAG(

@@ -13,11 +13,12 @@ import pandas as pd
 from loguru import logger
 from sqlalchemy import create_engine
 
-DB_USER = os.environ.get("APP_DB_USER", "admin")
-DB_PASSWORD = os.environ.get("APP_DB_PASSWORD", "admin")
-DB_NAME = os.environ.get("APP_DB_NAME", "churn")
-DB_HOST = "localhost"
-DB_PORT = "5435"
+DB_USER = os.environ.get("APP_DB_USER", "app_user_default")
+DB_PASSWORD = os.environ.get("APP_DB_PASSWORD", "app_pass_default")
+DB_NAME = os.environ.get("APP_DB_NAME", "app_data_default")
+
+DB_HOST = os.environ.get("APP_DB_HOST", "app_postgres")
+DB_PORT = os.environ.get("APP_DB_PORT", "5432")
 TABLE_NAME = "raw_churn_data"
 
 CSV_PATH = "data/raw/train.csv"

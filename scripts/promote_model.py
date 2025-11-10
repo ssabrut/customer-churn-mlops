@@ -12,7 +12,7 @@ from mlflow import MlflowClient
 MODEL_NAME = "XGBoostChurnModel"
 COMPARISON_METRIC = "f1_score"
 
-mlflow_tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "http://127.0.0.1:5050")
+mlflow_tracking_uri = os.environ.get("MLFLOW_TRACKING_URI")
 if not mlflow_tracking_uri:
     logger.error("MLFLOW_TRACKING_URI environment variable not set.")
     sys.exit(1)
