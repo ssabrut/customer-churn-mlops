@@ -20,7 +20,6 @@ class ChurnFeatureTransformer(BaseEstimator, TransformerMixin):
     ) -> pd.DataFrame:
         _X = X.copy()
         cols_to_drop = [
-            "Id",
             "Tenure",
             "Usage Frequency",
             "Subscription Type",

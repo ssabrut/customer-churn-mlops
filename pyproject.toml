@@ -10,6 +10,7 @@ dependencies = [
     "black[jupyter]>=25.9.0",
     "docker>=7.1.0",
     "fastapi[standard]>=0.119.1",
+    "feast>=0.1.2.post1",
     "isort>=7.0.0",
     "loguru>=0.7.3",
     "matplotlib>=3.10.7",
