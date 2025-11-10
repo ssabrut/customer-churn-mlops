@@ -129,7 +129,7 @@ with mlflow.start_run() as run:
         sk_model=pipeline,
         name=MODEL_NAME,
         registered_model_name=MODEL_NAME,
-        input_example=X_train.head(5),
+        input_example=X_train[:5],
         model_type="json",
     )
 

@@ -22,8 +22,8 @@ class MLflowClient:
                 "Argument 'settings' must be an instance of the Settings class"
             )
 
-        self.base_url = settings.mlflow_tracking_url
-        self.s3_endpoint_url = settings.mlflow_s3_endpoint_url
+        self.base_url = settings.mlflow_uri
+        self.s3_endpoint_url = settings.s3_uri
 
         if self._initialized:
             return

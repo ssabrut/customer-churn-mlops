@@ -1,3 +1,4 @@
+import os
 import sys
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
@@ -7,13 +8,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from pydantic import ValidationError
 
-from core.config import Settings, get_settings
 from core.routers.churn import router as churn_router
 from core.services.mlflow import MLflowClient
 from core.services.mlflow.factory import make_mlflow_service
+from core.config import load_mlops_config
 
 try:
-    settings: Settings = get_settings()
+    settings = load_mlops_config(project_root=os.getcwd())
     MODEL_NAME = "XGBoostChurnModel"
     MODEL_STAGE = "Production"
 except ValidationError as e:
@@ -25,6 +26,15 @@ except ValidationError as e:
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     mlflow_client: MLflowClient = make_mlflow_service()
     model, model_version = mlflow_client.load_model(name=MODEL_NAME, stage=MODEL_STAGE)
+
+    try:
+        from feast import FeatureStore 
+
+        feast_store = FeatureStore(repo_path=settings.feast_repo_path)
+        app.state.feast_store = feast_store
+        logger.success("Feast FeatureStore successfully initialized.")
+    except Exception as e:
+        logger.error(f"Feast Store initialization failed: {e}")
 
     app.state.settings = settings
     app.state.model = model

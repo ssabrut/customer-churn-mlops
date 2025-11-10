@@ -21,6 +21,7 @@ dependencies = [
     "pyarrow>=18.0.0",
     "pydantic>=2.12.4",
     "pydantic-settings>=2.11.0",
+    "redis>=4.6.0",
     "scikit-learn>=1.6.1",
     "seaborn>=0.13.2",
     "xgboost>=2.1.4",
