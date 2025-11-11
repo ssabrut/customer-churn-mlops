@@ -25,4 +25,5 @@ class ChurnRequest(BaseModel):
 
 class ChurnResponse(BaseModel):
     prediction: int
+    probability: float
     version: str

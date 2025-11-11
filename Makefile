@@ -5,7 +5,7 @@ deploy:
 	sed -i '' 's/^IS_DOCKER=.*/IS_DOCKER=true/g' .env
 	
 	- cd feature_repo; feast apply
-	- uv pip compile pyproject.toml -o requirements.txt
+	- uv pip compile --python-version 3.10 pyproject.toml -o requirements.txt
 	- docker compose up -d --build
 
 down:

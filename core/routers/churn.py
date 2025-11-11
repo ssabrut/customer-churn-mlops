@@ -46,10 +46,13 @@ async def predict_customer_churn(
     input_df = pd.DataFrame([feature_data], columns=FEATURE_ORDER)
     try:
         yhat = pipeline.predict(input_df)
+        yhat_proba = pipeline.predict_proba(input_df)
+        probability = yhat_proba[0][1]
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Prediction error: {e}")
 
     return ChurnResponse(
         prediction=int(yhat[0]),
+        probability=probability,
         version=model_version,
     )

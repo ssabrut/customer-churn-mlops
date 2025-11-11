@@ -3,7 +3,7 @@ name = "customer-churn-mlops"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.9,<3.11"
+requires-python = ">=3.10,<3.11"
 dependencies = [
     "apache-airflow-providers-cncf-kubernetes>=10.6.0",
     "apache-airflow-providers-docker>=4.4.0",
@@ -28,4 +28,5 @@ dependencies = [
     "apache-airflow>=3.0.6",
     "jq>=1.10.0",
     "graphviz>=0.21",
+    "asyncpg>=0.30.0",
 ]
