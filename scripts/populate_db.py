@@ -11,12 +11,27 @@ import time
 
 import pandas as pd
 from loguru import logger
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from core.config import load_mlops_config
 
 TABLE_NAME = "raw_churn_data"
 CSV_PATH = f"{project_root}/data/raw/train.csv"
+
+CREATE_PREDICTION_LOGS_TABLE = """
+CREATE TABLE IF NOT EXISTS prediction_logs (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    model_version VARCHAR(255),
+    customer_id INTEGER,
+    age INTEGER,
+    total_spend FLOAT,
+    payment_delay FLOAT,
+    prediction INTEGER,
+    probability FLOAT,
+    ground_truth INTEGER DEFAULT NULL
+);
+"""
 
 try:
     config = load_mlops_config(project_root)
@@ -44,6 +59,11 @@ def populate_database(retries: int = 5, delay: int = 5):
             # Test connection
             with engine.connect() as conn:
                 logger.success("Database connection successful.")
+
+                logger.info(f"Creating table '{TABLE_NAME}' (if not exists)...")
+                logger.info("Creating table 'prediction_logs' (if not exists)...")
+                conn.execute(text(CREATE_PREDICTION_LOGS_TABLE))
+                conn.commit()
 
             logger.info(f"Loading data from {CSV_PATH}...")
             df = pd.read_csv(CSV_PATH)

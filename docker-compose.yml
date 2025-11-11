@@ -83,12 +83,28 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${APP_DB_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${APP_DB_USER} -d ${APP_DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
       - internal
+
+  app_db_init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: churn-mlops-image:latest
+    container_name: db_init
+    command: python scripts/populate_db.py
+    env_file:
+      - .env
+    networks:
+      - internal
+    depends_on:
+      app_postgres:
+        condition: service_healthy
+    restart: "no"
 
   airflow_postgres:
     image: postgres:16
@@ -112,7 +128,7 @@ services:
     networks:
       - internal
 
-  airflow-init:
+  airflow_init:
     image: apache/airflow:2.8.0
     restart: "no"
     depends_on:
@@ -134,11 +150,11 @@ services:
     networks:
       - internal
 
-  airflow-webserver:
+  airflow_webserver:
     image: apache/airflow:2.8.0
     restart: always
     depends_on:
-      airflow-init:
+      airflow_init:
         condition: service_completed_successfully
     ports:
       - "8080:8080"
@@ -154,11 +170,11 @@ services:
       - internal
     command: airflow webserver
 
-  airflow-scheduler:
+  airflow_scheduler:
     image: apache/airflow:2.8.0
     restart: always
     depends_on:
-      airflow-init:
+      airflow_init:
         condition: service_completed_successfully
     env_file:
       - .env
@@ -198,6 +214,28 @@ services:
       - "6379:6379"
     networks:
       - feast_net
+
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: churn-mlops-image:latest
+    container_name: fastapi-server
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    networks:
+      - public
+      - internal
+    depends_on:
+      app_db_init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
 
 networks:
   feast_net:

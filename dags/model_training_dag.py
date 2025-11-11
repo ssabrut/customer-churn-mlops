@@ -25,16 +25,6 @@ with DAG(
     catchup=False,
     tags=["mlops", "model-training", "churn"],
 ) as dag:
-    task_populate_db = DockerOperator(
-        task_id="populate_database",
-        image="churn-mlops-image:latest",
-        command="python scripts/populate_db.py",
-        network_mode="customer-churn-mlops_internal",
-        environment=db_env_vars,
-        auto_remove=True,
-        tty=True,
-    )
-
     task_preprocess_data = DockerOperator(
         task_id="preprocess_data",
         image="churn-mlops-image:latest",
@@ -95,4 +85,4 @@ with DAG(
         tty=True,
     )
 
-    task_populate_db >> task_preprocess_data >> task_materialize_features >> task_train_model >> task_promote_model
+    task_preprocess_data >> task_materialize_features >> task_train_model >> task_promote_model
