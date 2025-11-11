@@ -220,12 +220,12 @@ services:
       timeout: 5s
       retries: 5
 
-  fastapi:
+  fastapi_server:
     build:
       context: .
       dockerfile: Dockerfile
     image: churn-mlops-image:latest
-    container_name: fastapi-server
+    container_name: fastapi_server
     restart: unless-stopped
     ports:
       - "8000:8000"

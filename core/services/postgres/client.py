@@ -2,8 +2,7 @@ import sys
 from loguru import logger
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import AsyncGenerator, Dict, Any
-from sqlalchemy import text
+from typing import AsyncGenerator
 
 from core.config import Settings
 
