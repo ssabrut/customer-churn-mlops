@@ -11,7 +11,6 @@ class DefaultSettings(BaseSettings):
         env_file=".env", extra="ignore", env_nested_delimiter="__"
     )
 
-
 class Settings(DefaultSettings):
     app_version: str = "0.1.0"
     debug: bool = True
@@ -19,6 +18,9 @@ class Settings(DefaultSettings):
     service_name: str = "churn-api"
 
     is_docker: bool = Field(..., env="IS_DOCKER")
+
+    mlflow_s3_endpoint_url: str = Field(..., env="MLFLOW_S3_ENDPOINT_URL")
+    mlflow_tracking_uri: str = Field(..., env="MLFLOW_TRACKING_URI")
 
     mlflow_s3_endpoint_url_local: str = Field(..., env="MLFLOW_S3_ENDPOINT_URL_LOCAL")
     mlflow_tracking_uri_local: str = Field(..., env="MLFLOW_TRACKING_URI_LOCAL")
@@ -42,25 +44,26 @@ def get_settings() -> Settings:
     return Settings()
 
 
-def load_mlops_config(project_root: str) -> Settings:
+def load_config(project_root: str = os.getcwd()) -> Settings:
     """
     Loads configuration for isolated scripts, resolving hosts by creating
     a new, updated Settings object.
     """
 
     settings = get_settings()
+    logger.info(f"IS_DOCKER={settings.is_docker}")
 
     if settings.is_docker:
-        new_mlflow_uri = os.environ.get("MLFLOW_TRACKING_URI", "http://mlflow:5000")
-        new_s3_uri = os.environ.get("MLFLOW_S3_ENDPOINT_URL", "http://s3:9000")
-        new_db_host = os.environ.get("DB_HOST", "app_postgres")
-        new_db_port = os.environ.get("DB_PORT", "5432")
+        new_mlflow_uri = settings.mlflow_tracking_uri
+        new_s3_uri = settings.mlflow_s3_endpoint_url
+        new_db_host = os.environ.get("APP_DB_HOST", "app_postgres")
+        new_db_port = os.environ.get("APP_DB_PORT", "5432")
         logger.debug("Config: Using internal Docker hosts.")
     else:
         new_mlflow_uri = settings.mlflow_tracking_uri_local
         new_s3_uri = settings.mlflow_s3_endpoint_url_local
-        new_db_host = os.environ.get("DB_HOST_LOCAL", "localhost")
-        new_db_port = os.environ.get("DB_PORT_LOCAL", "5435")
+        new_db_host = os.environ.get("APP_DB_HOST_LOCAL", "localhost")
+        new_db_port = os.environ.get("APP_DB_PORT_LOCAL", "5435")
         logger.debug("Config: Using local host ports.")
 
     updated_settings = settings.model_copy(

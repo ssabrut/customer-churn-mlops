@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Any
 
 
 class ChurnRequest(BaseModel):
@@ -26,4 +27,4 @@ class ChurnRequest(BaseModel):
 class ChurnResponse(BaseModel):
     prediction: int
     probability: float
-    version: str
+    version: Any

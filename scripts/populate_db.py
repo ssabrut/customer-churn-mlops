@@ -13,7 +13,7 @@ import pandas as pd
 from loguru import logger
 from sqlalchemy import create_engine, text
 
-from core.config import load_mlops_config
+from core.config import load_config
 
 TABLE_NAME = "raw_churn_data"
 CSV_PATH = f"{project_root}/data/raw/train.csv"
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS prediction_logs (
 """
 
 try:
-    config = load_mlops_config(project_root)
+    config = load_config()
 except EnvironmentError as e:
     logger.error(f"Configuration failed to load: {e}")
     sys.exit(1)

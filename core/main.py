@@ -1,5 +1,5 @@
-import os
 import sys
+import asyncio
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -7,14 +7,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from pydantic import ValidationError
+from mlflow.exceptions import MlflowException
 
 from core.routers.churn import router as churn_router
 from core.services.mlflow import MLflowClient
 from core.services.mlflow.factory import make_mlflow_service
-from core.config import load_mlops_config
+from core.config import load_config
 
 try:
-    settings = load_mlops_config(project_root=os.getcwd())
+    settings = load_config()
     MODEL_NAME = "XGBoostChurnModel"
     MODEL_STAGE = "Production"
 except ValidationError as e:
@@ -24,8 +25,28 @@ except ValidationError as e:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    app.state.model = None
+    app.state.model_version = "N/A"
+    app.state.feast_store = None
+    app.state.settings = settings
+    
     mlflow_client: MLflowClient = make_mlflow_service()
-    model, model_version = mlflow_client.load_model(name=MODEL_NAME, stage=MODEL_STAGE)
+    logger.info("Polling for 'Production' model version...")
+    production_version = "N/A"
+    
+    logger.success(f"Found 'Production' model version: {production_version}. Loading...")
+    try:
+        model, version = mlflow_client.load_model(
+            "XGBoostChurnModel", version=1
+        )
+        
+        app.state.model = model
+        app.state.model_version = 1
+        logger.success(f"Successfully loaded model version '{version}'.")
+    except Exception as e:
+        logger.critical(f"Failed to load model version {production_version}: {e}")
+        app.state.model = None
+        app.state.model_version = "N/A (Load Failed)"
 
     try:
         from feast import FeatureStore
@@ -35,10 +56,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.success("Feast FeatureStore successfully initialized.")
     except Exception as e:
         logger.error(f"Feast Store initialization failed: {e}")
-
-    app.state.settings = settings
-    app.state.model = model
-    app.state.model_version = model_version
+        
     yield
 
 

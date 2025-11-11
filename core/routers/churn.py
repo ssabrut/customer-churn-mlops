@@ -48,6 +48,7 @@ async def predict_customer_churn(
     }
 
     input_df = pd.DataFrame([feature_data], columns=FEATURE_ORDER)
+    print(input_df)
     try:
         yhat = pipeline.predict(input_df)
         yhat_proba = pipeline.predict_proba(input_df)
@@ -57,7 +58,7 @@ async def predict_customer_churn(
 
     try:
         log_entry = {
-            "model_version": model_version,
+            "model_version": str(model_version),
             "customer_id": customer_id,
             "age": feature_data.get("Age"),
             "total_spend": feature_data.get("Total Spend"),

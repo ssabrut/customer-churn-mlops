@@ -75,14 +75,4 @@ with DAG(
         tty=True,
     )
 
-    task_promote_model = DockerOperator(
-        task_id="promote_model",
-        image="churn-mlops-image:latest",
-        command="python scripts/promote_model.py",
-        network_mode="customer-churn-mlops_internal",
-        environment=mlflow_env_vars,
-        auto_remove=True,
-        tty=True,
-    )
-
-    task_preprocess_data >> task_materialize_features >> task_train_model >> task_promote_model
+    task_preprocess_data >> task_materialize_features >> task_train_model

@@ -18,11 +18,11 @@ from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 
 from core import constant
-from core.config import load_mlops_config
+from core.config import load_config
 from core.utils.converting import DataFrameConverter
 
 try:
-    config = load_mlops_config(project_root)
+    config = load_config()
 except EnvironmentError as e:
     logger.error(f"Configuration failed to load: {e}")
     sys.exit(1)
@@ -132,18 +132,6 @@ with mlflow.start_run() as run:
         input_example=X_train[:5],
         model_type="json",
     )
-
-    logger.info("Transitioning new model to 'Staging'...")
-    client = mlflow.MlflowClient()
-
-    new_version = client.search_model_versions(f"run_id='{run_id}'")[0]
-    client.transition_model_version_stage(
-        name=MODEL_NAME,
-        version=new_version.version,
-        stage="Staging",
-        archive_existing_versions=False,
-    )
-
-    logger.success(f"Transitioned model version {new_version.version} to 'Staging'.")
+    
     logger.info(f"Run ID: {run.info.run_id}")
     logger.success("Training complete.")

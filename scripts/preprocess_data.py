@@ -13,14 +13,14 @@ import pandas as pd
 from loguru import logger
 from sqlalchemy import create_engine
 
-from core.config import load_mlops_config
+from core.config import load_config
 from core.transformer import ChurnFeatureTransformer
 
 TABLE_NAME = "raw_churn_data"
 OUTPUT_PATH = f"{project_root}/data/preprocessed/train.parquet"
 
 try:
-    config = load_mlops_config(project_root)
+    config = load_config()
 except EnvironmentError as e:
     logger.error(f"Configuration failed to load: {e}")
     sys.exit(1)

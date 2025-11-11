@@ -3,12 +3,12 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from core.config import Settings
+from core.config import Settings, load_config
 
 
 @lru_cache
-def get_settings() -> Settings:
-    return Settings()
+def load_config() -> Settings:
+    return load_config()
 
 
-SettingDependencies = Annotated[Settings, Depends(get_settings)]
+SettingDependencies = Annotated[Settings, Depends(load_config)]

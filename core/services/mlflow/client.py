@@ -1,11 +1,11 @@
 import os
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Any
 
 import mlflow
 import mlflow.tracking
+import mlflow.sklearn
 from httpx import AsyncClient, ConnectError, RequestError, TimeoutException
 from loguru import logger
-from mlflow.pyfunc import PyFuncModel
 
 from core.config import Settings
 
@@ -13,8 +13,6 @@ from core.config import Settings
 class MLflowClient:
     base_url: str
     s3_endpoint_url: str
-    _instance: Optional["MLflowClient"] = None
-    _initialized: bool = False
 
     def __init__(self, settings: Settings) -> None:
         if not isinstance(settings, Settings):
@@ -25,16 +23,12 @@ class MLflowClient:
         self.base_url = settings.mlflow_uri
         self.s3_endpoint_url = settings.s3_uri
 
-        if self._initialized:
-            return
-
         logger.info("Initializing MLflowClient...")
         self._configure_client()
 
         self.model_cache: dict = {}
-        self._client = mlflow.tracking.MlflowClient()
+        self._client = mlflow.tracking.MlflowClient(tracking_uri=self.base_url, registry_uri=self.s3_endpoint_url)
 
-        self._initialized = True
         logger.success("MLflowClient initialized.")
 
     async def health_check(self) -> Dict[str, str]:
@@ -85,8 +79,8 @@ class MLflowClient:
             logger.error(f"Error getting model version for stage '{stage}': {e}")
             return "N/A"
 
-    def load_model(self, name: str, stage: str) -> Tuple[Optional[PyFuncModel], str]:
-        cache_key = f"{name}:{stage}"
+    def load_model(self, name: str, version: str) -> Tuple[Optional[Any], str]:
+        cache_key = f"{name}:{version}"
 
         if cache_key in self.model_cache:
             logger.info(f"Loading model '{cache_key}' from cache.")
@@ -94,10 +88,9 @@ class MLflowClient:
 
         logger.info(f"Loading model '{cache_key}' from MLflow registry...")
         try:
-            model_uri = f"models:/{name}/{stage}"
-            model = mlflow.pyfunc.load_model(model_uri=model_uri)
+            model_uri = f"models:/{name}/{version}"
+            model = mlflow.sklearn.load_model(model_uri=model_uri)
 
-            version = self.get_model_version(name, stage)
             self.model_cache[cache_key] = (model, version)
 
             logger.success(f"Successfully loaded and cached model version: {version}")
