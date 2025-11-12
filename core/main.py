@@ -6,11 +6,11 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
-from mlflow.exceptions import MlflowException
 from pydantic import ValidationError
 
 from core.config import load_config
 from core.routers.churn import router as churn_router
+from core.routers.health import router as health_router
 from core.services.mlflow import MLflowClient
 from core.services.mlflow.factory import make_mlflow_service
 
@@ -85,6 +85,7 @@ def root():
 
 
 app.include_router(churn_router)
+app.include_router(health_router)
 
 if __name__ == "__main__":
     import uvicorn

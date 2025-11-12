@@ -11,4 +11,4 @@ def load_config() -> Settings:
     return load_config()
 
 
-SettingDependencies = Annotated[Settings, Depends(load_config)]
+SettingsDependencies = Annotated[Settings, Depends(load_config)]
