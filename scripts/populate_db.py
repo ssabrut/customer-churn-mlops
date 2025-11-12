@@ -14,10 +14,9 @@ from loguru import logger
 from sqlalchemy import create_engine, text
 
 from core.config import load_config
+from core.constant import APP_TABlE_NAME
 
-TABLE_NAME = "raw_churn_data"
 CSV_PATH = f"{project_root}/data/raw/train.csv"
-
 CREATE_PREDICTION_LOGS_TABLE = """
 CREATE TABLE IF NOT EXISTS prediction_logs (
     id SERIAL PRIMARY KEY,
@@ -65,7 +64,7 @@ def populate_database(retries: int = 5, delay: int = 5):
             with engine.connect() as conn:
                 logger.success("Database connection successful.")
 
-                logger.info(f"Creating table '{TABLE_NAME}' (if not exists)...")
+                logger.info(f"Creating table '{APP_TABlE_NAME}' (if not exists)...")
                 logger.info("Creating table 'prediction_logs' (if not exists)...")
                 conn.execute(text(CREATE_PREDICTION_LOGS_TABLE))
                 conn.commit()
@@ -73,11 +72,11 @@ def populate_database(retries: int = 5, delay: int = 5):
             logger.info(f"Loading data from {CSV_PATH}...")
             df = pd.read_csv(CSV_PATH)
 
-            logger.info(f"Writing data to table '{TABLE_NAME}'...")
-            df.to_sql(TABLE_NAME, engine, if_exists="replace", index=False)
+            logger.info(f"Writing data to table '{APP_TABlE_NAME}'...")
+            df.to_sql(APP_TABlE_NAME, engine, if_exists="replace", index=False)
 
             logger.success(
-                f"Successfully populated '{TABLE_NAME}' with {len(df)} rows."
+                f"Successfully populated '{APP_TABlE_NAME}' with {len(df)} rows."
             )
             return
 

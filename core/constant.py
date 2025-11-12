@@ -1,25 +1,18 @@
-FEATURES_TO_USE = [
-    "Age",
-    "Support Calls",
-    "Payment Delay",
-    "Total Spend",
-    "Last Interaction",
-]
+from core.config import load_config
 
+config = load_config()
+
+# Features
 TARGET = "Churn"
 
-# --- Feature Engineering Bins ---
-# For "Age"
-AGE_BINS = [17, 24, 39, 59, 100]  # Bins: (17-24], (24-39], (39-59], (59-100]
-AGE_LABELS = ["Young Adult", "Adult", "Mid-Career", "Senior"]
+# App DB
+APP_TABlE_NAME = "raw_churn_data"
 
-# For "Last Interaction"
-INTERACTION_BINS = [-1, 7, 15, 30]  # Bins: (0-7], (7-15], (15-30]
-INTERACTION_LABELS = ["Highly Active", "Active", "Dormant"]
+# MLflow
+EXPERIMENT_NAME = "churn_prediction"
+MODEL_NAME = "XGBoostChurnModel"
+MLFLOW_TRACKING_URI = config.mlflow_uri
+MLFLOW_S3_ENDPOINT_URL = config.s3_uri
 
-# --- Encoding Mappings ---
-# Ordinal features and their correct order
-ORDINAL_FEATURES_MAP = {
-    "Age Group": AGE_LABELS,
-    "Interaction Frequency": INTERACTION_LABELS,
-}
+# Feast feature store
+FEAST_REPO_PATH = config.feast_repo_path

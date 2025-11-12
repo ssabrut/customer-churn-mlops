@@ -20,18 +20,13 @@ from xgboost import XGBClassifier
 from core import constant
 from core.config import load_config
 from core.utils.converting import DataFrameConverter
+from core.constant import MLFLOW_TRACKING_URI, MLFLOW_S3_ENDPOINT_URL, FEAST_REPO_PATH, EXPERIMENT_NAME, MODEL_NAME
 
 try:
     config = load_config()
 except EnvironmentError as e:
     logger.error(f"Configuration failed to load: {e}")
     sys.exit(1)
-
-MLFLOW_TRACKING_URI = config.mlflow_uri
-MLFLOW_S3_ENDPOINT_URL = config.s3_uri
-FEAST_REPO_PATH = config.feast_repo_path
-EXPERIMENT_NAME = "churn_prediction"
-MODEL_NAME = "XGBoostChurnModel"
 
 store = FeatureStore(repo_path=FEAST_REPO_PATH)
 

@@ -7,7 +7,6 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from datetime import datetime, timedelta
-from typing import Tuple
 
 import pandas as pd
 from loguru import logger
@@ -15,8 +14,8 @@ from sqlalchemy import create_engine
 
 from core.config import load_config
 from core.transformer import ChurnFeatureTransformer
+from core.constant import APP_TABlE_NAME
 
-TABLE_NAME = "raw_churn_data"
 OUTPUT_PATH = f"{project_root}/data/preprocessed/train.parquet"
 
 try:
@@ -41,8 +40,8 @@ try:
     engine = create_engine(engine_url)
 
     logger.info(f"Connecting to {db_host}:{db_port}...")
-    df = pd.read_sql(f"SELECT * FROM {TABLE_NAME}", engine)
-    logger.success(f"Successfully read {len(df)} rows from table '{TABLE_NAME}'.")
+    df = pd.read_sql(f"SELECT * FROM {APP_TABlE_NAME}", engine)
+    logger.success(f"Successfully read {len(df)} rows from table '{APP_TABlE_NAME}'.")
 except Exception as e:
     logger.error(
         f"\n[Error] Failed to connect or read from database: {e}", file=sys.stderr
@@ -78,5 +77,3 @@ logger.success("\nData preparation complete!")
 
 print("--- Offline Store (Parquet) Head ---")
 print(df.head())
-
-print(f'{{"start": "{start_timestamp}", "end": "{end_timestamp}"}}')
