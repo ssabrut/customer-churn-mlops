@@ -47,7 +47,7 @@ with DAG(
         },
         auto_remove=True,
         tty=True,
-        mount_tmp_dir=False
+        mount_tmp_dir=False,
     )
 
     task_train_model = DockerOperator(

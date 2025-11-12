@@ -116,12 +116,11 @@ with mlflow.start_run() as run:
     yhat = pipeline.predict(X_test)
     f1 = f1_score(y_test, yhat)
     accuracy = accuracy_score(y_test, yhat)
-    
+
     try:
         auc_score = roc_auc_score(y_test, yhat)
     except ValueError:
         auc_score = float("nan")
-
 
     mlflow.log_metrics(
         {"f1_score": f1, "accuracy": accuracy, "roc_auc_curve": auc_score}
@@ -135,6 +134,6 @@ with mlflow.start_run() as run:
         input_example=X_train.iloc[:10],
         model_type="json",
     )
-    
+
     logger.info(f"Run ID: {run.info.run_id}")
     logger.success("Training complete.")

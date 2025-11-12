@@ -11,6 +11,7 @@ class DefaultSettings(BaseSettings):
         env_file=".env", extra="ignore", env_nested_delimiter="__"
     )
 
+
 class Settings(DefaultSettings):
     app_version: str = "0.1.0"
     debug: bool = True

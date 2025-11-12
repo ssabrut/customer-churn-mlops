@@ -1,8 +1,8 @@
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Request, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
+from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.schemas import ChurnResponse
 from core.services.postgres import factory
@@ -25,7 +25,9 @@ FEAST_REQUEST_FEATURES = [f"customer_features:{name}" for name in FEATURE_ORDER]
 
 @router.post("/predict/{customer_id}", response_model=ChurnResponse)
 async def predict_customer_churn(
-    customer_id: int, request: Request, db: AsyncSession = Depends(factory.make_postgres_service().get_session)
+    customer_id: int,
+    request: Request,
+    db: AsyncSession = Depends(factory.make_postgres_service().get_session),
 ) -> ChurnResponse:
     pipeline = request.app.state.model
     feast_store = request.app.state.feast_store
@@ -33,7 +35,8 @@ async def predict_customer_churn(
 
     if pipeline is None or feast_store is None:
         raise HTTPException(
-            status_code=503, detail="Model or Feast Store not initialized. Check server logs."
+            status_code=503,
+            detail="Model or Feast Store not initialized. Check server logs.",
         )
 
     online_features = feast_store.get_online_features(
@@ -42,9 +45,7 @@ async def predict_customer_churn(
     ).to_dict()
 
     feature_data = {
-        key: val[0]
-        for key, val in online_features.items()
-        if key != "customer_id"
+        key: val[0] for key, val in online_features.items() if key != "customer_id"
     }
 
     input_df = pd.DataFrame([feature_data], columns=FEATURE_ORDER)
@@ -69,11 +70,12 @@ async def predict_customer_churn(
             "interaction_frequency": feature_data.get("Interaction_Frequency"),
             "prediction": int(yhat[0]),
             "probability": float(probability),
-            "ground_truth": feature_data.get("Churn")
+            "ground_truth": feature_data.get("Churn"),
         }
-        
+
         # Use sqlalchemy 'text' for safe parameter binding
-        log_sql = text("""
+        log_sql = text(
+            """
             INSERT INTO prediction_logs (
                 model_version, customer_id, age, support_calls, payment_delay, 
                 total_spend, last_interaction, gender, age_group, interaction_frequency,
@@ -84,11 +86,12 @@ async def predict_customer_churn(
                 :total_spend, :last_interaction, :gender, :age_group, :interaction_frequency 
                 :prediction, :probability, :ground_truth
             )
-        """)
-        
+        """
+        )
+
         await db.execute(log_sql, log_entry)
         await db.commit()
-        
+
     except Exception as e:
         logger.error(f"Failed to log prediction: {e}")
 

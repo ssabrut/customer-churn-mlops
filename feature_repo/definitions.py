@@ -1,12 +1,6 @@
 from datetime import timedelta
-from feast import (
-    Entity,
-    FeatureView,
-    Field,
-    FileSource,
-    PushSource,
-    ValueType,
-)
+
+from feast import Entity, FeatureView, Field, FileSource, PushSource, ValueType
 from feast.types import Float32, Int32
 
 customer = Entity(
@@ -26,7 +20,7 @@ customer_push_source = PushSource(
 )
 
 customer_features = FeatureView(
-    name="customer_features", 
+    name="customer_features",
     entities=[customer],
     ttl=timedelta(days=1),
     schema=[

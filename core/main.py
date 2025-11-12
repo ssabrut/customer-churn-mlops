@@ -1,18 +1,18 @@
-import sys
 import asyncio
+import sys
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
-from pydantic import ValidationError
 from mlflow.exceptions import MlflowException
+from pydantic import ValidationError
 
+from core.config import load_config
 from core.routers.churn import router as churn_router
 from core.services.mlflow import MLflowClient
 from core.services.mlflow.factory import make_mlflow_service
-from core.config import load_config
 
 try:
     settings = load_config()
@@ -29,17 +29,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.model_version = "N/A"
     app.state.feast_store = None
     app.state.settings = settings
-    
+
     mlflow_client: MLflowClient = make_mlflow_service()
     logger.info("Polling for 'Production' model version...")
     production_version = "N/A"
-    
-    logger.success(f"Found 'Production' model version: {production_version}. Loading...")
+
+    logger.success(
+        f"Found 'Production' model version: {production_version}. Loading..."
+    )
     try:
-        model, version = mlflow_client.load_model(
-            "XGBoostChurnModel", version=1
-        )
-        
+        model, version = mlflow_client.load_model("XGBoostChurnModel", version=1)
+
         app.state.model = model
         app.state.model_version = 1
         logger.success(f"Successfully loaded model version '{version}'.")
@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.success("Feast FeatureStore successfully initialized.")
     except Exception as e:
         logger.error(f"Feast Store initialization failed: {e}")
-        
+
     yield
 
 

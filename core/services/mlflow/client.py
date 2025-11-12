@@ -1,9 +1,9 @@
 import os
-from typing import Dict, Optional, Tuple, Any
+from typing import Any, Dict, Optional, Tuple
 
 import mlflow
-import mlflow.tracking
 import mlflow.sklearn
+import mlflow.tracking
 from httpx import AsyncClient, ConnectError, RequestError, TimeoutException
 from loguru import logger
 
@@ -27,7 +27,9 @@ class MLflowClient:
         self._configure_client()
 
         self.model_cache: dict = {}
-        self._client = mlflow.tracking.MlflowClient(tracking_uri=self.base_url, registry_uri=self.s3_endpoint_url)
+        self._client = mlflow.tracking.MlflowClient(
+            tracking_uri=self.base_url, registry_uri=self.s3_endpoint_url
+        )
 
         logger.success("MLflowClient initialized.")
 

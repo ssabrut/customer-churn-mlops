@@ -79,4 +79,4 @@ logger.success("\nData preparation complete!")
 print("--- Offline Store (Parquet) Head ---")
 print(df.head())
 
-print(f"{{\"start\": \"{start_timestamp}\", \"end\": \"{end_timestamp}\"}}")
+print(f'{{"start": "{start_timestamp}", "end": "{end_timestamp}"}}')
