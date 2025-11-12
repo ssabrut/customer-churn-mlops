@@ -1,23 +1,23 @@
 import os
 import sys
+import time
+from typing import Any
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(script_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-import sys
-import time
-
 import pandas as pd
 from loguru import logger
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, exc
+from sqlalchemy.engine import Engine
 
 from core.config import load_config
 from core.constant import APP_TABlE_NAME
 
-CSV_PATH = f"{project_root}/data/raw/train.csv"
-CREATE_PREDICTION_LOGS_TABLE = """
+CSV_PATH: str = f"{project_root}/data/raw/train.csv"
+CREATE_PREDICTION_LOGS_TABLE: str = """
 CREATE TABLE IF NOT EXISTS prediction_logs (
     id SERIAL PRIMARY KEY,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -38,58 +38,106 @@ CREATE TABLE IF NOT EXISTS prediction_logs (
 """
 
 try:
-    config = load_config()
+    config: Any = load_config()
 except EnvironmentError as e:
     logger.error(f"Configuration failed to load: {e}")
     sys.exit(1)
 
 
-def populate_database(retries: int = 5, delay: int = 5):
-    db_user = config.app_db_user
-    db_password = config.app_db_password
-    db_name = config.app_db_name
-    db_host = config.db_host
-    db_port = config.db_port
+def main(retries: int = 5, delay: int = 5) -> None:
+    """
+    Connects to the PostgreSQL database, creates necessary tables, and
+    populates the main application table from a CSV file.
 
-    engine_url = (
+    This function reads database configuration from the loaded 'config' object.
+    It performs validation by checking for the CSV file's existence first.
+    It then attempts to load the CSV data. If successful, it enters a
+    retry loop to connect to the database, create tables, and write the
+    data. The script will exit with an error if file validation fails or
+    if all database connection retries are exhausted.
+
+    Args:
+        retries (int): The number of attempts to connect and populate the
+                       database.
+        delay (int): The number of seconds to wait between retry attempts.
+
+    Returns:
+        None
+    """
+    # --- 1. Input Validation ---
+    if not os.path.exists(CSV_PATH):
+        logger.error(f"Fatal Error: CSV file not found at {CSV_PATH}")
+        sys.exit(1)
+
+    # --- 2. Data Loading ---
+    try:
+        logger.info(f"Loading data from {CSV_PATH}...")
+        df: pd.DataFrame = pd.read_csv(CSV_PATH)
+    except pd.errors.ParserError as e:
+        logger.error(f"Fatal Error: Failed to parse CSV file '{CSV_PATH}': {e}")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Fatal Error: Failed to read CSV file '{CSV_PATH}': {e}")
+        sys.exit(1)
+
+    # --- 3. Database Population with Retries ---
+    db_user: str = config.app_db_user
+    db_password: str = config.app_db_password
+    db_name: str = config.app_db_name
+    db_host: str = config.db_host
+    db_port: int = config.db_port
+
+    engine_url: str = (
         f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
     )
-    logger.info(f"Connecting to database at {db_host}:{db_port}...")
+    logger.info(f"Attempting to connect to database at {db_host}:{db_port}...")
 
     for i in range(retries):
         try:
-            engine = create_engine(engine_url)
+            engine: Engine = create_engine(engine_url)
 
-            # Test connection
+            # Test connection and create tables
             with engine.connect() as conn:
                 logger.success("Database connection successful.")
-
-                logger.info(f"Creating table '{APP_TABlE_NAME}' (if not exists)...")
-                logger.info("Creating table 'prediction_logs' (if not exists)...")
+                logger.info("Creating tables (if not exists)...")
                 conn.execute(text(CREATE_PREDICTION_LOGS_TABLE))
                 conn.commit()
 
-            logger.info(f"Loading data from {CSV_PATH}...")
-            df = pd.read_csv(CSV_PATH)
-
-            logger.info(f"Writing data to table '{APP_TABlE_NAME}'...")
+            # Write data to SQL
+            logger.info(
+                f"Writing {len(df)} rows to table '{APP_TABlE_NAME}'..."
+            )
             df.to_sql(APP_TABlE_NAME, engine, if_exists="replace", index=False)
 
             logger.success(
                 f"Successfully populated '{APP_TABlE_NAME}' with {len(df)} rows."
             )
-            return
+            return  # Success
+
+        except exc.OperationalError as e:
+            logger.error(f"Database connection error: {e}")
+            logger.warning(
+                f"Database not ready. Retrying in {delay} seconds... "
+                f"({i + 1}/{retries})"
+            )
+
+        except exc.SQLAlchemyError as e:
+            logger.error(f"Database operation error (e.g., table write): {e}")
+            logger.warning(
+                f"Retrying in {delay} seconds... ({i + 1}/{retries})"
+            )
 
         except Exception as e:
-            logger.error(f"Error: {e}")
-            logger.error(
-                f"Database not ready. Retrying in {delay} seconds... ({i+1}/{retries})"
+            logger.error(f"An unexpected error occurred: {e}")
+            logger.warning(
+                f"Retrying in {delay} seconds... ({i + 1}/{retries})"
             )
-            time.sleep(delay)
+
+        time.sleep(delay)
 
     logger.error("Failed to populate database after several retries.")
     sys.exit(1)
 
 
 if __name__ == "__main__":
-    populate_database()
+    main()
