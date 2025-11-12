@@ -35,7 +35,7 @@ class DataFrameConverter(BaseEstimator, TransformerMixin):
         Raises:
             ValueError: If 'column_names' is empty or not provided.
         """
-        if not column_names or len(column_names) == 0:
+        if len(column_names) == 0:
             raise ValueError("column_names must be a non-empty list or Index.")
         self.column_names: Union[List[str], pd.Index] = column_names
 
