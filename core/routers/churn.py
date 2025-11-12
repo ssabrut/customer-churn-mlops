@@ -83,7 +83,7 @@ async def predict_customer_churn(
             )
             VALUES (
                 :model_version, :customer_id, :age, :support_calls, :payment_delay,
-                :total_spend, :last_interaction, :gender, :age_group, :interaction_frequency 
+                :total_spend, :last_interaction, :gender, :age_group, :interaction_frequency,
                 :prediction, :probability, :ground_truth
             )
         """

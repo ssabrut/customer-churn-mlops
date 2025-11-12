@@ -1,4 +1,3 @@
-import asyncio
 import sys
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
@@ -16,8 +15,6 @@ from core.services.mlflow.factory import make_mlflow_service
 
 try:
     settings = load_config()
-    MODEL_NAME = "XGBoostChurnModel"
-    MODEL_STAGE = "Production"
 except ValidationError as e:
     logger.error(f"Application configuration is invalid.\n{e}")
     sys.exit(1)
