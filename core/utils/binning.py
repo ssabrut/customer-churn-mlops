@@ -60,9 +60,7 @@ class AgeBinner(BaseEstimator, TransformerMixin):
         labels: List[str] = ["Young Adult", "Adult", "Mid-Career", "Senior"]
 
         try:
-            _X["Age_Group"] = pd.cut(
-                _X["Age"], bins=bins, labels=labels, right=True
-            )
+            _X["Age_Group"] = pd.cut(_X["Age"], bins=bins, labels=labels, right=True)
         except KeyError:
             raise ValueError(
                 "Transformation failed: 'Age' column not found in DataFrame."

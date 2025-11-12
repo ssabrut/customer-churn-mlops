@@ -82,9 +82,7 @@ class AgeInteractionMapper(BaseEstimator, TransformerMixin):
 
         # --- Column Validation / Error Handling ---
         if "Age_Group" not in _X.columns:
-            raise ValueError(
-                "Transformation failed: 'Age_Group' column not found."
-            )
+            raise ValueError("Transformation failed: 'Age_Group' column not found.")
         if "Interaction_Frequency" not in _X.columns:
             raise ValueError(
                 "Transformation failed: 'Interaction_Frequency' column not found."

@@ -89,8 +89,6 @@ class GenderEncoder(BaseEstimator, TransformerMixin):
                 _X = _X.drop(["Female"], axis=1)
 
         except (KeyError, ValueError) as e:
-            raise ValueError(
-                f"Transformation failed during 'Gender' encoding: {e}"
-            )
+            raise ValueError(f"Transformation failed during 'Gender' encoding: {e}")
 
         return _X

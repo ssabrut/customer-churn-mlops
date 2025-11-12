@@ -257,6 +257,19 @@ services:
       mlflow:
         condition: service_started
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - internal
+    env_file:
+      - .env
+    volumes:
+      - grafana_data:/var/lib/grafana
+    restart: unless-stopped
+
 networks:
   feast_net:
     driver: bridge
@@ -267,6 +280,7 @@ networks:
 
 volumes:
   airflow_posstgres_data:
+  grafana_data:
   minio_new_volume:
   mlflow_postgres_data:
   postgres_data:

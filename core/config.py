@@ -2,8 +2,8 @@ import os
 from typing import ClassVar
 
 from loguru import logger
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict, ValidationError
+from pydantic import Field, ValidationError
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class DefaultSettings(BaseSettings):

@@ -76,10 +76,10 @@ except KeyError as e:
 # --- DAG Definition ---
 with DAG(
     dag_id="churn_model_training_pipeline",
-    start_date=datetime(2025, 1, 1),
+    start_date=datetime.now(),
     schedule_interval="@daily",
     catchup=False,
-    tags=["mlops", "model-training", "churn"],
+    tags=["preprocess-data", "feast-materialize", "model-training"],
 ) as dag:
     task_preprocess_data = DockerOperator(
         task_id="preprocess_data",
