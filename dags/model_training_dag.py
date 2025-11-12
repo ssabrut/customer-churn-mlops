@@ -36,33 +36,18 @@ with DAG(
         tty=True,
     )
 
-    task_materialize_features = DockerOperator(
-        task_id="materialize_features",
+    task_feast_materialize = DockerOperator(
+        task_id="feast_materialize",
         image="churn-mlops-image:latest",
-        command="""
-            /bin/bash -c '
-            # 1. Pull the JSON payload as a string
-            # We wrap the Jinja template in single quotes
-            PAYLOAD='{{ ti.xcom_pull(task_ids='preprocess_data') }}'
-
-            # 2. Use jq to safely parse the JSON strings
-            START_TS=$(echo "$PAYLOAD" | jq -r ".start")
-            END_TS=$(echo "$PAYLOAD" | jq -r ".end")
-
-            echo "Materializing features from $START_TS to $END_TS"
-            
-            # 3. Run the Feast Materialize command (using positional arguments)
-            cd feature_repo && feast materialize "$START_TS" "$END_TS"
-            '
-        """,
-        network_mode='customer-churn-mlops_internal',
+        command="python scripts/feast_materialize.py",
+        network_mode="customer-churn-mlops_internal",
         environment={
-            'AWS_ACCESS_KEY_ID': '${AWS_ACCESS_KEY_ID}',
-            'AWS_SECRET_ACCESS_KEY': '${AWS_SECRET_ACCESS_KEY}'
+            **db_env_vars,
+            "FEAST_REDIS_URL": "redis:6379",
         },
-        mount_tmp_dir=False,
         auto_remove=True,
-        tty=True
+        tty=True,
+        mount_tmp_dir=False
     )
 
     task_train_model = DockerOperator(
@@ -75,4 +60,4 @@ with DAG(
         tty=True,
     )
 
-    task_preprocess_data >> task_materialize_features >> task_train_model
+    task_preprocess_data >> task_feast_materialize >> task_train_model

@@ -2,13 +2,13 @@
 _
 @
 customer_idCustomer unique ID"customer_idJcustomer_churn
-œßÅÈØıÍç¬ËÈğæŞ‰
+œßÅÈØıÍ÷–ĞÈÈÀ€Œ
 D
 %
 __dummy"
 __dummy_idJcustomer_churn
-œßÅÈğşÊç¬ËÈè§æ‰1"$b2af89fa-864c-49ad-96f5-2da342e78122*ç¬ËÈ˜–ºŠ2¹
-‡
+œßÅÈğşÊ÷–ĞÈø˜ˆŒ1"$64b00951-3116-4b8f-8c72-1470ce9665aa*÷–ĞÈ¨ÒÃŒ2Ù
+¨
 customer_featurescustomer_churncustomer_id"
 Age"
 Support Calls"
@@ -18,10 +18,10 @@ __dummy_idJcustomer_churn
 Churn"
 Male"
 	Age_Group"
-Interaction_Frequency2€ç„:¥event_timestamp*created_timestampZ$"../data/preprocessed/train.parquetŠ1feast.infra.offline_stores.file_source.FileSource¢"../data/preprocessed/train.parquet@b
-customer_id-
-œßÅÈèìÃ•¿ÆÈèòå‡
-ıï¼ªı½ÆÈb¶event_timestamp*created_timestampZ$"../data/preprocessed/train.parquetŠ1feast.infra.offline_stores.file_source.FileSource¢"../data/preprocessed/train.parquetªcustomer_churnŠ/
+Interaction_Frequency2€£:ševent_timestamp*created_timestampZ&$/app/data/preprocessed/train.parquetŠ1feast.infra.offline_stores.file_source.FileSource¢customer_batch_source@Jª	Šfeast.data_source.PushSource¢customer_features_push_targetÒfevent_timestamp*created_timestampZ&$/app/data/preprocessed/train.parquet¢customer_batch_sourceb
+customer_id,
+œßÅÈèìÃòĞÈÈÃ³T
+ıï¼ªı½ÆÈb«event_timestamp*created_timestampZ&$/app/data/preprocessed/train.parquetŠ1feast.infra.offline_stores.file_source.FileSource¢customer_batch_sourceªcustomer_churnb»	Šfeast.data_source.PushSource¢customer_features_push_targetªcustomer_churnÒfevent_timestamp*created_timestampZ&$/app/data/preprocessed/train.parquet¢customer_batch_sourceŠ/
 
 customer_churn
-œßÅÈˆëÔç¬ËÈğ¼ò‡
+œßÅÈˆëÔ÷–ĞÈ°™ì‰

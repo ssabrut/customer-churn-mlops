@@ -41,6 +41,8 @@ async def predict_customer_churn(
         entity_rows=[{"customer_id": customer_id}],
     ).to_dict()
 
+    print(online_features)
+
     feature_data = {
         key: val[0]
         for key, val in online_features.items()

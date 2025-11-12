@@ -52,17 +52,15 @@ mlflow.set_experiment(EXPERIMENT_NAME)
 logger.info(f"MLflow configured. Experiment: {EXPERIMENT_NAME}")
 
 
-logger.info("Loading data...")
-df = pd.read_parquet(
+logger.info("Loading entity dataframe spine...")
+entity_df = pd.read_parquet(
     f"{project_root}/data/preprocessed/train.parquet",
     columns=["customer_id", "event_timestamp"],
 )
-target_df = pd.read_parquet(
-    f"{project_root}/data/preprocessed/train.parquet", columns=[constant.TARGET]
-)
 
+logger.info("Getting historical features from Feast...")
 training_data = store.get_historical_features(
-    entity_df=df,
+    entity_df=entity_df,
     features=[
         "customer_features:Age",
         "customer_features:Support Calls",
@@ -74,20 +72,20 @@ training_data = store.get_historical_features(
         "customer_features:Age_Group",
         "customer_features:Interaction_Frequency",
     ],
-).to_df()
+)
 
-X_full = training_data.drop(["customer_id", constant.TARGET], axis=1)
-y_full = target_df[constant.TARGET]
+training_df = training_data.to_df()
+logger.info(f"Successfully retrieved {len(training_df)} feature rows.")
+print(training_df.head())
 
-combined_df = pd.concat([X_full, y_full], axis=1)
+cols_to_drop = ["event_timestamp", "customer_id"]
+if "created_timestamp" in training_df.columns:
+    cols_to_drop.append("created_timestamp")
 
-cols_to_drop = ["event_timestamp", "created_timestamp", "customer_id"]
-for col in cols_to_drop:
-    if col in combined_df.columns:
-        combined_df = combined_df.drop([col], axis=1)
+training_df = training_df.drop(columns=cols_to_drop)
 
-X = combined_df.drop(constant.TARGET, axis=1)
-y = combined_df[constant.TARGET]
+X = training_df.drop(constant.TARGET, axis=1)
+y = training_df[constant.TARGET]
 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.1, random_state=42
@@ -99,7 +97,7 @@ logger.info("Building model...")
 params = {"objective": "binary:logistic", "random_state": 42}
 pipeline = Pipeline(
     steps=[
-        ("scaler", StandardScaler()),
+        ("scaler", StandardScaler(with_mean=False)),
         ("to_dataframe", DataFrameConverter(column_names=original_columns)),
         ("model", XGBClassifier(**params)),
     ]
@@ -118,7 +116,12 @@ with mlflow.start_run() as run:
     yhat = pipeline.predict(X_test)
     f1 = f1_score(y_test, yhat)
     accuracy = accuracy_score(y_test, yhat)
-    auc_score = roc_auc_score(y_test, yhat)
+    
+    try:
+        auc_score = roc_auc_score(y_test, yhat)
+    except ValueError:
+        auc_score = float("nan")
+
 
     mlflow.log_metrics(
         {"f1_score": f1, "accuracy": accuracy, "roc_auc_curve": auc_score}
@@ -129,7 +132,7 @@ with mlflow.start_run() as run:
         sk_model=pipeline,
         name=MODEL_NAME,
         registered_model_name=MODEL_NAME,
-        input_example=X_train[:5],
+        input_example=X_train.iloc[:10],
         model_type="json",
     )
     
