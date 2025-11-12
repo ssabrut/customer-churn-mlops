@@ -21,7 +21,7 @@ mlflow_env_vars = {
 with DAG(
     dag_id="churn_model_training_pipeline",
     start_date=datetime(2025, 1, 1),
-    schedule_interval=None,
+    schedule_interval="@daily",
     catchup=False,
     tags=["mlops", "model-training", "churn"],
 ) as dag:

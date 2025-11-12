@@ -41,8 +41,6 @@ async def predict_customer_churn(
         entity_rows=[{"customer_id": customer_id}],
     ).to_dict()
 
-    print(online_features)
-
     feature_data = {
         key: val[0]
         for key, val in online_features.items()
@@ -50,7 +48,6 @@ async def predict_customer_churn(
     }
 
     input_df = pd.DataFrame([feature_data], columns=FEATURE_ORDER)
-    print(input_df)
     try:
         yhat = pipeline.predict(input_df)
         yhat_proba = pipeline.predict_proba(input_df)
@@ -63,21 +60,29 @@ async def predict_customer_churn(
             "model_version": str(model_version),
             "customer_id": customer_id,
             "age": feature_data.get("Age"),
-            "total_spend": feature_data.get("Total Spend"),
+            "support_calls": feature_data.get("Support Calls"),
             "payment_delay": feature_data.get("Payment Delay"),
+            "total_spend": feature_data.get("Total Spend"),
+            "last_interaction": feature_data.get("Last Interaction"),
+            "gender": feature_data.get("Male"),
+            "age_group": feature_data.get("Age_Group"),
+            "interaction_frequency": feature_data.get("Interaction_Frequency"),
             "prediction": int(yhat[0]),
             "probability": float(probability),
+            "ground_truth": feature_data.get("Churn")
         }
         
         # Use sqlalchemy 'text' for safe parameter binding
         log_sql = text("""
             INSERT INTO prediction_logs (
-                model_version, customer_id, age, total_spend, 
-                payment_delay, prediction, probability
+                model_version, customer_id, age, support_calls, payment_delay, 
+                total_spend, last_interaction, gender, age_group, interaction_frequency,
+                prediction, probability, ground_truth
             )
             VALUES (
-                :model_version, :customer_id, :age, :total_spend, 
-                :payment_delay, :prediction, :probability
+                :model_version, :customer_id, :age, :support_calls, :payment_delay,
+                :total_spend, :last_interaction, :gender, :age_group, :interaction_frequency 
+                :prediction, :probability, :ground_truth
             )
         """)
         

@@ -169,15 +169,15 @@ services:
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
       - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - public
-      - internal
     command: airflow webserver
     healthcheck:
       test: ["CMD-SHELL", "curl --fail http://localhost:8080/health"]
       interval: 10s
       timeout: 10s
       retries: 5
+    networks:
+      - internal
+      - public
 
   airflow_scheduler:
     image: apache/airflow:2.8.0
@@ -196,36 +196,6 @@ services:
     networks:
       - internal
     command: airflow scheduler
-
-  dag_trigger:
-    image: curlimages/curl:latest
-    container_name: dag_trigger
-    command: >
-      /bin/sh -c '
-        echo "Waiting for Airflow webserver to be healthy..."
-        
-        # Wait for the webserver's health check to pass
-        until curl -s -f -u "airflow:airflow" http://airflow-webserver:8080/api/v1/health; do
-          echo "Airflow not ready... sleeping 10s."
-          sleep 10
-        done
-        
-        echo "Airflow is healthy! Triggering DAG: churn_model_training_pipeline"
-        
-        # Send the API request to trigger the DAG
-        curl -X POST -u "airflow:airflow" \
-          "http://airflow-webserver:8080/api/v1/dags/churn_model_training_pipeline/dagRuns" \
-          -H "Content-Type: application/json" \
-          -d ''
-          
-        echo "DAG triggered. Exiting."
-      '
-    networks:
-      - internal
-    depends_on:
-      airflow_webserver:
-        condition: service_healthy
-    restart: "no"
 
   mlflow:
     build:
