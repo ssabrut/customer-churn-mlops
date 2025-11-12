@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS prediction_logs (
     interaction_frequency INTEGER,
     prediction INTEGER,
     probability FLOAT,
-    ground_truth INTEGER DEFAULT NULL
+    ground_truth INTEGER DEFAULT NULL,
+    response_time_ms TIMESTAMP
 );
 """
 

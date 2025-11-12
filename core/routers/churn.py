@@ -1,3 +1,4 @@
+import time
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Request
 from loguru import logger
@@ -29,6 +30,8 @@ async def predict_customer_churn(
     request: Request,
     db: AsyncSession = Depends(factory.make_postgres_service().get_session),
 ) -> ChurnResponse:
+    start_time = time.perf_counter()
+    
     pipeline = request.app.state.model
     feast_store = request.app.state.feast_store
     model_version = request.app.state.model_version
@@ -56,6 +59,9 @@ async def predict_customer_churn(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Prediction error: {e}")
 
+    end_time = time.perf_counter()
+    response_time_ms = int((end_time - start_time) * 1000)
+
     try:
         log_entry = {
             "model_version": str(model_version),
@@ -71,6 +77,7 @@ async def predict_customer_churn(
             "prediction": int(yhat[0]),
             "probability": float(probability),
             "ground_truth": feature_data.get("Churn"),
+            "response_time_ms": response_time_ms,
         }
 
         # Use sqlalchemy 'text' for safe parameter binding
@@ -79,12 +86,12 @@ async def predict_customer_churn(
             INSERT INTO prediction_logs (
                 model_version, customer_id, age, support_calls, payment_delay, 
                 total_spend, last_interaction, gender, age_group, interaction_frequency,
-                prediction, probability, ground_truth
+                prediction, probability, ground_truth, response_time_ms
             )
             VALUES (
                 :model_version, :customer_id, :age, :support_calls, :payment_delay,
                 :total_spend, :last_interaction, :gender, :age_group, :interaction_frequency,
-                :prediction, :probability, :ground_truth
+                :prediction, :probability, :ground_truth, :response_time_ms
             )
         """
         )
