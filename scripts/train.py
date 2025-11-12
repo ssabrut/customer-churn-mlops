@@ -6,18 +6,17 @@ project_root = os.path.dirname(script_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+from typing import Any, Dict, List
+
 import mlflow
 import mlflow.sklearn
 import numpy as np
 import pandas as pd
-from pandas import DataFrame, Series, Index
-from typing import Any, Dict, List
-
 from feast import FeatureStore
-from feast.errors import FeastConfigError
 from loguru import logger
 from mlflow.entities import Experiment
 from mlflow.exceptions import MlflowException
+from pandas import DataFrame, Index, Series
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
@@ -26,14 +25,14 @@ from xgboost import XGBClassifier
 
 from core import constant
 from core.config import load_config
-from core.utils.converting import DataFrameConverter
 from core.constant import (
-    MLFLOW_TRACKING_URI,
-    MLFLOW_S3_ENDPOINT_URL,
-    FEAST_REPO_PATH,
     EXPERIMENT_NAME,
+    FEAST_REPO_PATH,
+    MLFLOW_S3_ENDPOINT_URL,
+    MLFLOW_TRACKING_URI,
     MODEL_NAME,
 )
+from core.utils.converting import DataFrameConverter
 
 
 def main() -> None:
@@ -82,9 +81,7 @@ def main() -> None:
 
     try:
         mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-        experiment: Experiment | None = mlflow.get_experiment_by_name(
-            EXPERIMENT_NAME
-        )
+        experiment: Experiment | None = mlflow.get_experiment_by_name(EXPERIMENT_NAME)
         if experiment is None:
             logger.info(f"Creating new MLflow experiment: {EXPERIMENT_NAME}")
             mlflow.create_experiment(EXPERIMENT_NAME)
@@ -98,7 +95,7 @@ def main() -> None:
     # --- 3. Feast Store Initialization ---
     try:
         store: FeatureStore = FeatureStore(repo_path=FEAST_REPO_PATH)
-    except (FeastConfigError, Exception) as e:
+    except Exception as e:
         logger.error(f"Fatal Error: Failed to initialize Feast FeatureStore: {e}")
         sys.exit(1)
 
@@ -214,7 +211,7 @@ def main() -> None:
             logger.info("Logging model...")
             mlflow.sklearn.log_model(
                 sk_model=pipeline,
-                artifact_path=MODEL_NAME,  # Corrected parameter
+                name=MODEL_NAME,
                 registered_model_name=MODEL_NAME,
                 input_example=X_train.iloc[:10],
             )

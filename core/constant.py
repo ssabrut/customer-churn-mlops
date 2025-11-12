@@ -6,6 +6,9 @@ config = load_config()
 TARGET = "Churn"
 
 # App DB
+APP_DB_USER = config.app_db_user
+APP_DB_PASSWORD = config.app_db_password
+APP_DB_NAME = config.app_db_name
 APP_TABlE_NAME = "raw_churn_data"
 
 # MLflow

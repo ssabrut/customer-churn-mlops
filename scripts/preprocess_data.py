@@ -15,8 +15,8 @@ from sqlalchemy import create_engine, exc
 from sqlalchemy.engine import Engine
 
 from core.config import load_config
-from core.transformer import ChurnFeatureTransformer
 from core.constant import APP_TABlE_NAME
+from core.transformer import ChurnFeatureTransformer
 
 OUTPUT_PATH: str = f"{project_root}/data/preprocessed/train.parquet"
 
@@ -78,8 +78,7 @@ def main() -> None:
     # --- 2. Data Validation ---
     if df.empty:
         logger.warning(
-            "No data was read from the database. "
-            "Offline store will not be updated."
+            "No data was read from the database. " "Offline store will not be updated."
         )
         sys.exit(0)
 

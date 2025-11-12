@@ -6,7 +6,6 @@ from typing import List
 import pandas as pd
 import pyarrow.parquet as pq
 from feast import FeatureStore
-from feast.errors import FeastConfigError
 from loguru import logger
 from pyarrow.lib import ArrowInvalid
 
@@ -26,7 +25,7 @@ def main() -> None:
     """
     try:
         store: FeatureStore = FeatureStore(repo_path="feature_repo")
-    except (FeastConfigError, Exception) as e:
+    except Exception as e:
         logger.error(f"Fatal Error: Failed to initialize Feast FeatureStore: {e}")
         logger.error("Ensure 'feast_repo' exists and configuration is correct.")
         sys.exit(1)
@@ -65,7 +64,6 @@ def main() -> None:
 
             df_chunk: pd.DataFrame = batch.to_pandas()
 
-            # Timestamps are overwritten here for push, as per original logic
             now: datetime = datetime.utcnow()
             df_chunk["event_timestamp"] = now
             df_chunk["created_timestamp"] = now
@@ -87,7 +85,9 @@ def main() -> None:
             )
 
     except ArrowInvalid as e:
-        logger.error(f"Fatal Error: Failed to read Parquet file. File may be corrupt: {e}")
+        logger.error(
+            f"Fatal Error: Failed to read Parquet file. File may be corrupt: {e}"
+        )
         sys.exit(1)
     except KeyError as e:
         logger.error(
@@ -95,7 +95,9 @@ def main() -> None:
         )
         sys.exit(1)
     except Exception as e:
-        logger.error(f"Fatal Error: An unexpected error occurred during batch processing or push: {e}")
+        logger.error(
+            f"Fatal Error: An unexpected error occurred during batch processing or push: {e}"
+        )
         sys.exit(1)
 
     logger.success("✅ Successfully ingested features into Redis!")

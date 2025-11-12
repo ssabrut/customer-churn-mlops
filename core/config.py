@@ -20,15 +20,18 @@ class Settings(DefaultSettings):
 
     is_docker: bool = Field(..., env="IS_DOCKER")
 
+    # MLflow config
+    aws_access_key_id: str = Field(..., env="AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: str = Field(..., env="AWS_SECRET_ACCESS_KEY")
     mlflow_s3_endpoint_url: str = Field(..., env="MLFLOW_S3_ENDPOINT_URL")
     mlflow_tracking_uri: str = Field(..., env="MLFLOW_TRACKING_URI")
 
-    mlflow_s3_endpoint_url_local: str = Field(..., env="MLFLOW_S3_ENDPOINT_URL_LOCAL")
-    mlflow_tracking_uri_local: str = Field(..., env="MLFLOW_TRACKING_URI_LOCAL")
-
+    # App Postgres config
     app_db_user: str = Field(..., env="APP_DB_USER")
     app_db_password: str = Field(..., env="APP_DB_PASSWORD")
     app_db_name: str = Field(..., env="APP_DB_NAME")
+    app_db_host: str = Field(..., env="APP_DB_HOST")
+    app_db_port: int = Field(..., env="APP_DB_PORT")
 
     db_host: str = "localhost"
     db_port: str = "5435"
@@ -57,15 +60,17 @@ def load_config(project_root: str = os.getcwd()) -> Settings:
     if settings.is_docker:
         new_mlflow_uri = settings.mlflow_tracking_uri
         new_s3_uri = settings.mlflow_s3_endpoint_url
-        new_db_host = os.environ.get("APP_DB_HOST", "app_postgres")
-        new_db_port = os.environ.get("APP_DB_PORT", "5432")
+        new_db_host = settings.app_db_host
+        new_db_port = settings.app_db_port
         logger.debug("Config: Using internal Docker hosts.")
     else:
-        new_mlflow_uri = settings.mlflow_tracking_uri_local
-        new_s3_uri = settings.mlflow_s3_endpoint_url_local
-        new_db_host = os.environ.get("APP_DB_HOST_LOCAL", "localhost")
-        new_db_port = os.environ.get("APP_DB_PORT_LOCAL", "5435")
+        new_mlflow_uri = "http://127.0.0.1:5050"
+        new_s3_uri = "http://127.0.0.1:9002"
+        new_db_host = "localhost"
+        new_db_port = 5435
         logger.debug("Config: Using local host ports.")
+
+    feast_repo_path: str = os.path.join(project_root, settings.feast_repo_name)
 
     updated_settings = settings.model_copy(
         update={
@@ -73,7 +78,7 @@ def load_config(project_root: str = os.getcwd()) -> Settings:
             "s3_uri": new_s3_uri,
             "db_host": new_db_host,
             "db_port": new_db_port,
-            "feast_repo_path": os.path.join(project_root, settings.feast_repo_name),
+            "feast_repo_path": feast_repo_path,
         }
     )
 

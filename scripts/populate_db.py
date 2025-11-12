@@ -10,7 +10,7 @@ if project_root not in sys.path:
 
 import pandas as pd
 from loguru import logger
-from sqlalchemy import create_engine, text, exc
+from sqlalchemy import create_engine, exc, text
 from sqlalchemy.engine import Engine
 
 from core.config import load_config
@@ -104,9 +104,7 @@ def main(retries: int = 5, delay: int = 5) -> None:
                 conn.commit()
 
             # Write data to SQL
-            logger.info(
-                f"Writing {len(df)} rows to table '{APP_TABlE_NAME}'..."
-            )
+            logger.info(f"Writing {len(df)} rows to table '{APP_TABlE_NAME}'...")
             df.to_sql(APP_TABlE_NAME, engine, if_exists="replace", index=False)
 
             logger.success(
@@ -123,15 +121,11 @@ def main(retries: int = 5, delay: int = 5) -> None:
 
         except exc.SQLAlchemyError as e:
             logger.error(f"Database operation error (e.g., table write): {e}")
-            logger.warning(
-                f"Retrying in {delay} seconds... ({i + 1}/{retries})"
-            )
+            logger.warning(f"Retrying in {delay} seconds... ({i + 1}/{retries})")
 
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}")
-            logger.warning(
-                f"Retrying in {delay} seconds... ({i + 1}/{retries})"
-            )
+            logger.warning(f"Retrying in {delay} seconds... ({i + 1}/{retries})")
 
         time.sleep(delay)
 
