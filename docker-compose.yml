@@ -255,7 +255,29 @@ services:
       redis:
         condition: service_healthy
       mlflow:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  gradio_server:
+    image: churn-mlops-image:latest
+    container_name: gradio_server
+    command: python entrypoint/gradio_app.py
+    restart: unless-stopped
+    ports:
+      - "7860:7860"
+    networks:
+      - internal
+      - public
+    env_file:
+      - .env
+    depends_on:
+      fastapi_server:
+        condition: service_healthy
 
   grafana:
     image: grafana/grafana:latest
