@@ -38,6 +38,17 @@ CREATE TABLE IF NOT EXISTS prediction_logs (
 );
 """
 
+CREATE_MODEL_PERFORMANCE_TABLE: str = """
+CREATE TABLE model_performance (
+    id SERIAL PRIMARY KEY,
+    customer_id BIGINT,
+    prediction INTEGER,
+    actual_churn INTEGER,
+    process_date DATE,
+    inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
 try:
     config: Any = load_config()
 except EnvironmentError as e:
@@ -102,6 +113,7 @@ def main(retries: int = 5, delay: int = 5) -> None:
                 logger.success("Database connection successful.")
                 logger.info("Creating tables (if not exists)...")
                 conn.execute(text(CREATE_PREDICTION_LOGS_TABLE))
+                conn.execute(text(CREATE_MODEL_PERFORMANCE_TABLE))
                 conn.commit()
 
             # Write data to SQL

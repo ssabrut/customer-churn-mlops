@@ -80,6 +80,17 @@ with DAG(
     catchup=False,
     tags=["mlops", "monitoring", "ground-truth"],
 ) as dag:
+    task_join_ground_truth = DockerOperator(
+        task_id="join_ground_truth",
+        image="churn-mlops-image:latest",
+        command="python scripts/fetch_ground_truth.py --date {{ ds }} --days_ago 30",
+        network_mode="customer-churn-mlops_internal",
+        environment=db_env_vars,
+        auto_remove=True,
+        tty=True,
+        mount_tmp_dir=False
+    )
+    
     task_calculate_performance = DockerOperator(
         task_id="calculate_performance",
         image="churn-mlops-image:latest",
@@ -91,4 +102,4 @@ with DAG(
         mount_tmp_dir=False
     )
 
-    task_calculate_performance
+    task_join_ground_truth >> task_calculate_performance
