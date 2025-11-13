@@ -2,7 +2,7 @@ import sys
 from typing import AsyncGenerator, Dict
 
 from loguru import logger
-from sqlalchemy import text
+from sqlalchemy import text, create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from core.config import Settings
@@ -30,6 +30,15 @@ class PostgresClient:
             )
         except Exception as e:
             logger.error(f"Failed to create database engine: {e}")
+            sys.exit(1)
+
+    def get_sync_engine(self):
+        sync_url = self.base_url.replace("+asyncpg", "")
+        
+        try:
+            return create_engine(sync_url)
+        except Exception as e:
+            logger.error(f"Failed to create synchronous database engine: {e}")
             sys.exit(1)
 
     async def health_check(self) -> Dict[str, str]:

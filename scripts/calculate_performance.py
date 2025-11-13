@@ -23,7 +23,8 @@ def main(args):
     config = load_config()
 
     try:
-        prod_version = client._client.get_latest_versions(MODEL_NAME, stages=["Production"])[0]
+        prod_version = client._client.get_latest_versions(MODEL_NAME)[0]
+        logger.debug("Production Version:", prod_version)
         run_id = prod_version.run_id
         logger.info(f"Logging metrics to production model run: {run_id}")
     except Exception as e:
@@ -31,14 +32,14 @@ def main(args):
         run_id = None
 
     # 3. Fetch performance data for the day
-    engine = create_engine(f"postgresql://{APP_DB_USER}:{APP_DB_PASSWORD}@{config.db_host}:5432/{APP_DB_NAME}")
+    engine = create_engine(f"postgresql://{APP_DB_USER}:{APP_DB_PASSWORD}@{config.db_host}:{config.db_port}/{APP_DB_NAME}")
     process_date = (datetime.fromisoformat(args.date) - 
                     timedelta(days=args.days_ago)).strftime('%Y-%m-%d')
 
     sql = f"""
         SELECT prediction, actual_churn
         FROM model_performance
-        WHERE process_date = '{process_date}'
+        WHERE process_date > '{process_date}'
     """
     df = pd.read_sql(sql, engine)
 

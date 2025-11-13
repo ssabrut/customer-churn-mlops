@@ -16,6 +16,7 @@ from core.services.postgres.factory import make_postgres_service
 
 def main(args):
     postgres_client: PostgresClient = make_postgres_service()
+    engine = postgres_client.get_sync_engine()
 
     # 1. Calculate the date to process
     process_date = (datetime.fromisoformat(args.date) - 
@@ -27,31 +28,26 @@ def main(args):
     sql_preds = f"""
         SELECT customer_id, prediction
         FROM prediction_logs
-        WHERE DATE(timestamp) = '{process_date}'
+        WHERE DATE(timestamp) > '{process_date}'
     """
-    preds_df = pd.read_sql(sql_preds, postgres_client.engine)
+    preds_df = pd.read_sql(sql_preds, engine)
     if preds_df.empty:
         logger.warning("No predictions found for this date. Exiting.")
         return
 
-    # 3. Fetch actual churn data (THIS QUERY IS AN EXAMPLE)
-    # You must change this to match your app's schema
-    sql_actuals = """
-        SELECT customer_id, churned AS actual_churn
-        FROM customers 
-        WHERE churn_date IS NOT NULL
-    """
-    actuals_df = pd.read_sql(sql_actuals, postgres_client.engine)
+    # 3. Fetch actual churn data
+    sql_actuals = 'SELECT "Id" AS customer_id, "Churn" AS actual_churn FROM customers'
+    actuals_df = pd.read_sql(sql_actuals, engine)
 
     # 4. Join and save
     results_df = preds_df.merge(actuals_df, on="customer_id", how="left")
-    results_df["actual_churn"] = results_df["actual_churn"].fillna(0) # Assume non-churn if not in table
+    results_df["actual_churn"] = results_df["actual_churn"].fillna(0)
     results_df["process_date"] = process_date
 
     logger.success(f"Found {len(results_df)} results. Saving to 'model_performance' table.")
 
     # 5. Write to the new performance table
-    results_df.to_sql("model_performance", postgres_client.engine, if_exists="append", index=False)
+    results_df.to_sql("model_performance", engine, if_exists="append", index=False)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -2,12 +2,12 @@
 _
 @
 customer_idCustomer unique ID"customer_idJcustomer_churn
-œßÅÈØıÍÏÆÕÈØÛİ
+œßÅÈØıÍÚì×ÈèÙ³Ì
 D
 %
 __dummy"
 __dummy_idJcustomer_churn
-œßÅÈğşÊÏÆÕÈĞÜŞİ1"$eaf4fa5f-7c0b-40c0-8f75-24d5fe71078c*ÏÆÕÈÈİ¤Ş2Ù
+œßÅÈğşÊÚì×ÈÀ‡·Ì1"$a5aa3ab1-635f-47f5-9c2d-738791a127e2*Úì×ÈèöÌ2Ù
 ¨
 customer_featurescustomer_churncustomer_id"
 Age"
@@ -24,4 +24,4 @@ __dummy_idJcustomer_churn
 ıï¼ªı½ÆÈb»	Šfeast.data_source.PushSource¢customer_features_push_targetªcustomer_churnÒfevent_timestamp*created_timestampZ&$/app/data/preprocessed/train.parquet¢customer_batch_sourceb«event_timestamp*created_timestampZ&$/app/data/preprocessed/train.parquetŠ1feast.infra.offline_stores.file_source.FileSource¢customer_batch_sourceªcustomer_churnŠ/
 
 customer_churn
-œßÅÈˆëÔÏÆÕÈ¸ïÛ
+œßÅÈˆëÔÚì×ÈØ»©Ê
