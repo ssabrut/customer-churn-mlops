@@ -106,4 +106,5 @@ async def predict_customer_churn(
         prediction=int(yhat[0]),
         probability=probability,
         version=model_version,
+        features=feature_data
     )

@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict
 
 from pydantic import BaseModel, Field
 
@@ -29,3 +29,4 @@ class ChurnResponse(BaseModel):
     prediction: int
     probability: float
     version: Any
+    features: Dict[str, Any]
