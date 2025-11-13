@@ -29,4 +29,5 @@ dependencies = [
     "jq>=1.10.0",
     "graphviz>=0.21",
     "asyncpg>=0.30.0",
+    "gradio>=5.23.1",
 ]
