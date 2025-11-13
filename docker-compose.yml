@@ -268,7 +268,13 @@ services:
       - .env
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
     restart: unless-stopped
+    depends_on:
+      - app_postgres
+      - mlflow_postgres
 
 networks:
   feast_net:

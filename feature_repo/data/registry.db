@@ -1,13 +1,13 @@
 
-^
+_
 @
-customer_idCustomer unique ID"customer_idJcustomer_churn
-œßÅÈØıÍ–ëÒÈ¨ê£
-C
+customer_idCustomer unique ID"customer_idJcustomer_churn
+œßÅÈØıÍí™ÕÈ¸ÒÜ¶
+D
 %
 __dummy"
-__dummy_idJcustomer_churn
-œßÅÈğşÊ–ëÒÈ¸¯§1"$d28ebe55-8a3f-4ff3-9e37-12b65e5c841a*–ëÒÈˆˆã2Ù
+__dummy_idJcustomer_churn
+œßÅÈğşÊí™ÕÈà€å¶1"$6724ebbb-8cfb-4cec-93f6-c539b3aa2ad3*í™ÕÈØ¥Ÿ·2Ù
 ¨
 customer_featurescustomer_churncustomer_id"
 Age"
@@ -21,7 +21,7 @@ __dummy_idJcustomer_churn
 Interaction_Frequency2€£:ševent_timestamp*created_timestampZ&$/app/data/preprocessed/train.parquetŠ1feast.infra.offline_stores.file_source.FileSource¢customer_batch_source@Jª	Šfeast.data_source.PushSource¢customer_features_push_targetÒfevent_timestamp*created_timestampZ&$/app/data/preprocessed/train.parquet¢customer_batch_sourceb
 customer_id,
 œßÅÈèìÃòĞÈÈÃ³T
-ıï¼ªı½ÆÈb«event_timestamp*created_timestampZ&$/app/data/preprocessed/train.parquetŠ1feast.infra.offline_stores.file_source.FileSource¢customer_batch_sourceªcustomer_churnb»	Šfeast.data_source.PushSource¢customer_features_push_targetªcustomer_churnÒfevent_timestamp*created_timestampZ&$/app/data/preprocessed/train.parquet¢customer_batch_sourceŠ.
+ıï¼ªı½ÆÈb»	Šfeast.data_source.PushSource¢customer_features_push_targetªcustomer_churnÒfevent_timestamp*created_timestampZ&$/app/data/preprocessed/train.parquet¢customer_batch_sourceb«event_timestamp*created_timestampZ&$/app/data/preprocessed/train.parquetŠ1feast.infra.offline_stores.file_source.FileSource¢customer_batch_sourceªcustomer_churnŠ/
 
-customer_churn
-œßÅÈˆëÔ–ëÒÈÉ
+customer_churn
+œßÅÈˆëÔí™ÕÈøäÇ´
