@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS prediction_logs (
     prediction INTEGER,
     probability FLOAT,
     ground_truth INTEGER DEFAULT NULL,
-    response_time_ms TIMESTAMP
+    response_time_ms INTEGER
 );
 """
 

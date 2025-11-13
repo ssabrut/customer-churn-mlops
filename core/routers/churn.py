@@ -24,7 +24,7 @@ FEATURE_ORDER = [
 FEAST_REQUEST_FEATURES = [f"customer_features:{name}" for name in FEATURE_ORDER]
 
 
-@router.post("/predict/{customer_id}", response_model=ChurnResponse)
+@router.get("/predict/{customer_id}", response_model=ChurnResponse)
 async def predict_customer_churn(
     customer_id: int,
     request: Request,

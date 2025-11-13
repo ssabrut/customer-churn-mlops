@@ -78,11 +78,10 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
                 # --- Tab 1: Prediction Result (Default) ---
                 with gr.Tab("Prediction Result"):
                     prediction_output = gr.Label(label="Prediction")
-                    probability_output = gr.Gauge(
+                    probability_output = gr.Slider(
                         label="Churn Probability", 
-                        min_value=0.0, 
-                        max_value=1.0, 
-                        show_value=True
+                        minimum=0.0, 
+                        maximum=1.0, 
                     )
                     version_output = gr.Textbox(
                         label="Model Version", 

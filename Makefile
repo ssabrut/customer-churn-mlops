@@ -4,8 +4,8 @@ deploy:
 	# --- CRITICAL: Set IS_DOCKER=true for Docker execution ---
 	sed -i '' 's/^IS_DOCKER=.*/IS_DOCKER=true/g' .env
 	
-	- cd feature_repo; feast apply
 	- uv pip compile --python-version 3.10 pyproject.toml -o requirements.txt
+	- cd feature_repo; feast apply; cd ..
 	- docker compose up -d --build
 
 down:
