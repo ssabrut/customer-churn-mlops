@@ -24,7 +24,7 @@
         {
             "datasource": {
                 "type": "grafana-postgresql-datasource",
-                "uid": "ff40bi489hc00f"
+                "uid": "app-datasource"
             },
             "fieldConfig": {
                 "defaults": {
@@ -152,7 +152,7 @@
         {
             "datasource": {
                 "type": "grafana-postgresql-datasource",
-                "uid": "ff40bi489hc00f"
+                "uid": "app-datasource"
             },
             "fieldConfig": {
                 "defaults": {
@@ -262,7 +262,7 @@
         {
             "datasource": {
                 "type": "grafana-postgresql-datasource",
-                "uid": "ff40bi489hc00f"
+                "uid": "app-datasource"
             },
             "fieldConfig": {
                 "defaults": {
@@ -367,7 +367,7 @@
         {
             "datasource": {
                 "type": "grafana-postgresql-datasource",
-                "uid": "ef40bk9ampds0d"
+                "uid": "mlflow-datasource"
             },
             "fieldConfig": {
                 "defaults": {
@@ -451,7 +451,7 @@
                     "dataset": "mlflow",
                     "datasource": {
                         "type": "grafana-postgresql-datasource",
-                        "uid": "ef40bk9ampds0d"
+                        "uid": "mlflow-datasource"
                     },
                     "editorMode": "code",
                     "format": "table",
@@ -483,7 +483,7 @@
         {
             "datasource": {
                 "type": "grafana-postgresql-datasource",
-                "uid": "ff40bi489hc00f"
+                "uid": "app-datasource"
             },
             "fieldConfig": {
                 "defaults": {
@@ -567,7 +567,7 @@
                     "dataset": "churn",
                     "datasource": {
                         "type": "grafana-postgresql-datasource",
-                        "uid": "ff40bi489hc00f"
+                        "uid": "app-datasource"
                     },
                     "editorMode": "code",
                     "format": "table",
