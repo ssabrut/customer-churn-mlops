@@ -50,6 +50,9 @@ class Settings(DefaultSettings):
     app_db_host: str = Field(..., env="APP_DB_HOST")
     app_db_port: int = Field(..., env="APP_DB_PORT")
 
+    # Gradio config
+    fastapi_url: str = Field(..., env="FASTAPI_URL")
+    
     # --- Modular variables (overwritten by load_config) ---
     # These have defaults for non-Docker, but are updated by load_config
     # based on the IS_DOCKER flag.
@@ -123,19 +126,22 @@ def load_config(project_root: str = os.getcwd()) -> Settings:
     new_mlflow_uri: str
     new_s3_uri: str
     new_db_host: str
-    new_db_port: str  # Type defined as str in the model
+    new_db_port: str
+    new_fastapi_url: str
 
     if settings.is_docker:
         new_mlflow_uri = settings.mlflow_tracking_uri
         new_s3_uri = settings.mlflow_s3_endpoint_url
         new_db_host = settings.app_db_host
         new_db_port = str(settings.app_db_port)  # Ensure type match
+        new_fastapi_url = settings.fastapi_url
         logger.debug("Config: Using internal Docker hosts.")
     else:
         new_mlflow_uri = "http://127.0.0.1:5050"
         new_s3_uri = "http://127.0.0.1:9002"
         new_db_host = "localhost"
         new_db_port = "5435"  # Ensure type match
+        new_fastapi_url = "http://localhost:8000"
         logger.debug("Config: Using local host ports.")
 
     feast_repo_path: str = os.path.join(project_root, settings.feast_repo_name)
@@ -148,6 +154,7 @@ def load_config(project_root: str = os.getcwd()) -> Settings:
             "db_host": new_db_host,
             "db_port": new_db_port,
             "feast_repo_path": feast_repo_path,
+            "fastapi_url": new_fastapi_url
         }
     )
 
