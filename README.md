@@ -13,6 +13,14 @@ A production-ready MLOps platform for predicting customer churn using machine le
 - **Containerized**: Fully containerized with Docker and Docker Compose
 - **Ground Truth Tracking**: Automated pipeline for collecting ground truth and calculating model performance metrics
 
+## 📋 Prerequisites
+
+- **Docker** (version 20.10+)
+- **Docker Compose** (version 2.0+)
+- **Make** (optional, for convenience commands)
+- **Python 3.10** (for local development)
+- **uv** (Python package manager)
+
 ## 🏗️ Architecture
 
 ```
@@ -54,6 +62,8 @@ A production-ready MLOps platform for predicting customer churn using machine le
     └─────────────┘
 ```
 
+> 📖 **For a detailed architecture diagram with data flows, component interactions, and deployment details, see [ARCHITECTURE.md](ARCHITECTURE.md)**
+
 ## 🛠️ Tech Stack
 
 - **Python**: 3.10
@@ -69,20 +79,12 @@ A production-ready MLOps platform for predicting customer churn using machine le
 - **Monitoring**: Grafana
 - **Containerization**: Docker, Docker Compose
 
-## 📋 Prerequisites
-
-- **Docker** (version 20.10+)
-- **Docker Compose** (version 2.0+)
-- **Make** (optional, for convenience commands)
-- **Python 3.10** (for local development)
-- **uv** (Python package manager)
-
 ## 🚦 Quick Start
 
 ### 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/ssabrut/customer-churn-mlops.git
 cd customer-churn-mlops
 ```
 
@@ -298,7 +300,7 @@ print(f"Churn Probability: {prediction['probability']:.2%}")
 
 ### Local Development Setup
 
-1. **Install Dependencies:
+1. **Install Dependencies**:
    ```bash
    uv pip install -r requirements.txt
    ```

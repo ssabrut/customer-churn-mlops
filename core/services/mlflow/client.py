@@ -24,6 +24,7 @@ class MLflowClient:
         model_cache (Dict[str, Tuple[Any, str]]): An in-memory cache
             for loaded models.
     """
+
     base_url: str
     s3_endpoint_url: str
     model_cache: Dict[str, Tuple[Any, str]]
@@ -56,9 +57,7 @@ class MLflowClient:
                 tracking_uri=self.base_url, registry_uri=self.s3_endpoint_url
             )
         except (MlflowException, Exception) as e:
-            raise RuntimeError(
-                f"Failed to initialize MLflowClient: {e}"
-            ) from e
+            raise RuntimeError(f"Failed to initialize MLflowClient: {e}") from e
 
     async def health_check(self) -> Dict[str, str]:
         """

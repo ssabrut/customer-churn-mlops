@@ -1,13 +1,9 @@
 from typing import AsyncGenerator, Dict
 
-from sqlalchemy import Engine, text, create_engine
+from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
+from sqlalchemy.ext.asyncio import (AsyncEngine, AsyncSession,
+                                    async_sessionmaker, create_async_engine)
 
 from core.config import Settings
 
@@ -27,6 +23,7 @@ class PostgresClient:
         session_factory (async_sessionmaker[AsyncSession]): The factory
             for creating new asynchronous sessions.
     """
+
     base_url: str
     engine: AsyncEngine
     session_factory: async_sessionmaker[AsyncSession]

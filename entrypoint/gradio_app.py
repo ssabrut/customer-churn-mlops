@@ -7,22 +7,30 @@ project_root = os.path.dirname(script_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+import json
+from typing import Any, List, Optional, Tuple
+
 import gradio as gr
 import httpx
 import pandas as pd
-import json
-from typing import Tuple, Optional, Any, List
 
 from core.config import load_config
 
 # Define the order of features to display
 FEATURE_ORDER: List[str] = [
-    "Age", "Support Calls", "Payment Delay", "Total Spend",
-    "Last Interaction", "Male", "Age_Group", "Interaction_Frequency"
+    "Age",
+    "Support Calls",
+    "Payment Delay",
+    "Total Spend",
+    "Last Interaction",
+    "Male",
+    "Age_Group",
+    "Interaction_Frequency",
 ]
 
+
 def predict_churn(
-    customer_id: Optional[float]
+    customer_id: Optional[float],
 ) -> Tuple[str, float, str, Optional[pd.DataFrame], Any]:
     """
     Calls the FastAPI service to get a churn prediction and the features used.
@@ -53,7 +61,13 @@ def predict_churn(
 
     # 2. Validate input
     if customer_id is None or customer_id <= 0:
-        return "No prediction", 0.0, "N/A", None, "Please enter a valid, positive Customer ID."
+        return (
+            "No prediction",
+            0.0,
+            "N/A",
+            None,
+            "Please enter a valid, positive Customer ID.",
+        )
 
     try:
         customer_id_int = int(customer_id)
@@ -75,10 +89,10 @@ def predict_churn(
         data = response.json()  # Can raise json.JSONDecodeError
 
         # 5. Extract and validate keys
-        prediction = data['prediction']  # Can raise KeyError
-        probability = data['probability']
-        model_version = data['version']
-        features = data['features']
+        prediction = data["prediction"]  # Can raise KeyError
+        probability = data["probability"]
+        model_version = data["version"]
+        features = data["features"]
 
         # 6. Format outputs
         prediction_label = "CHURN" if prediction == 1 else "NO CHURN"
@@ -93,7 +107,7 @@ def predict_churn(
             probability,
             model_version,
             features_df,
-            data  # Return the raw JSON dict
+            data,  # Return the raw JSON dict
         )
 
     # --- Specific Error Handlers ---
@@ -104,7 +118,7 @@ def predict_churn(
     except httpx.HTTPStatusError as e:
         # Try to parse error detail from API, fall back to status code
         try:
-            error_detail = e.response.json().get('detail', e.strerror)
+            error_detail = e.response.json().get("detail", e.strerror)
         except json.JSONDecodeError:
             error_detail = e.response.text or e.strerror
         error_msg = f"API Error ({e.response.status_code}): {error_detail}"
@@ -116,7 +130,9 @@ def predict_churn(
         return "Error", 0.0, "N/A", None, error_msg
 
     except json.JSONDecodeError:
-        error_msg = "API Error: Failed to decode successful (200) JSON response from server."
+        error_msg = (
+            "API Error: Failed to decode successful (200) JSON response from server."
+        )
         return "Error", 0.0, "N/A", None, error_msg
 
     except KeyError as e:
@@ -127,6 +143,7 @@ def predict_churn(
         # Generic fallback for any other unexpected error
         error_msg = f"An unexpected error occurred: {str(e)}"
         return "Error", 0.0, "N/A", None, error_msg
+
 
 # --- Build the Gradio Interface ---
 with gr.Blocks(theme=gr.themes.Soft()) as demo:
@@ -142,9 +159,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
         # --- INPUTS ---
         with gr.Column(scale=1):
             customer_id_input = gr.Number(
-                label="Customer ID",
-                value=1001,
-                precision=0  # Requires whole numbers
+                label="Customer ID", value=1001, precision=0  # Requires whole numbers
             )
             predict_button = gr.Button("Predict", variant="primary")
 
@@ -160,17 +175,18 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
                         maximum=1.0,
                     )
                     version_output = gr.Textbox(
-                        label="Model Version",
-                        interactive=False
+                        label="Model Version", interactive=False
                     )
 
                 # --- Tab 2: Features Used ---
                 with gr.Tab("Features Used"):
-                    gr.Markdown("These features were fetched *in real-time* from the online store to make the prediction.")
+                    gr.Markdown(
+                        "These features were fetched *in real-time* from the online store to make the prediction."
+                    )
                     features_output = gr.Dataframe(
                         label="Online Features",
                         headers=FEATURE_ORDER,
-                        datatype=["number"] * len(FEATURE_ORDER)
+                        datatype=["number"] * len(FEATURE_ORDER),
                     )
 
                 # --- Tab 3: Raw API Response ---

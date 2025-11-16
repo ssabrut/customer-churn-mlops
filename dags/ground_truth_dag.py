@@ -88,9 +88,9 @@ with DAG(
         environment=db_env_vars,
         auto_remove=True,
         tty=True,
-        mount_tmp_dir=False
+        mount_tmp_dir=False,
     )
-    
+
     task_calculate_performance = DockerOperator(
         task_id="calculate_performance",
         image="churn-mlops-image:latest",
@@ -99,7 +99,7 @@ with DAG(
         environment={**db_env_vars, **mlflow_env_vars},
         auto_remove=True,
         tty=True,
-        mount_tmp_dir=False
+        mount_tmp_dir=False,
     )
 
     task_join_ground_truth >> task_calculate_performance

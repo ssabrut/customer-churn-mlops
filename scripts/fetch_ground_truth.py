@@ -7,14 +7,16 @@ project_root = os.path.dirname(script_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-import pandas as pd
 import argparse
 from datetime import datetime, timedelta
+
+import pandas as pd
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
 from core.services.postgres import PostgresClient
 from core.services.postgres.factory import make_postgres_service
+
 
 def main(args: argparse.Namespace) -> None:
     """
@@ -44,12 +46,15 @@ def main(args: argparse.Namespace) -> None:
 
     # 1. Calculate the date to process
     try:
-        process_date_dt = (datetime.fromisoformat(args.date) -
-                           timedelta(days=args.days_ago))
-        process_date: str = process_date_dt.strftime('%Y-%m-%d')
+        process_date_dt = datetime.fromisoformat(args.date) - timedelta(
+            days=args.days_ago
+        )
+        process_date: str = process_date_dt.strftime("%Y-%m-%d")
     except ValueError as e:
-        print(f"Error: Invalid date format '{args.date}'. Must be YYYY-MM-DD.",
-              file=sys.stderr)
+        print(
+            f"Error: Invalid date format '{args.date}'. Must be YYYY-MM-DD.",
+            file=sys.stderr,
+        )
         raise ValueError("Invalid date format provided") from e
 
     print(f"Fetching ground truth for predictions made on: {process_date}")
@@ -63,9 +68,7 @@ def main(args: argparse.Namespace) -> None:
     """
     try:
         preds_df: pd.DataFrame = pd.read_sql(
-            sql_preds,
-            engine,
-            params={"process_date": process_date}
+            sql_preds, engine, params={"process_date": process_date}
         )
     except SQLAlchemyError as e:
         print(f"Error: Failed to fetch predictions from database: {e}", file=sys.stderr)
@@ -76,7 +79,9 @@ def main(args: argparse.Namespace) -> None:
         return
 
     # 3. Fetch actual churn data
-    sql_actuals: str = 'SELECT "Id" AS customer_id, "Churn" AS actual_churn FROM customers'
+    sql_actuals: str = (
+        'SELECT "Id" AS customer_id, "Churn" AS actual_churn FROM customers'
+    )
     try:
         actuals_df: pd.DataFrame = pd.read_sql(sql_actuals, engine)
     except SQLAlchemyError as e:
@@ -95,9 +100,12 @@ def main(args: argparse.Namespace) -> None:
         results_df.to_sql("model_performance", engine, if_exists="append", index=False)
         print("Successfully saved performance results.")
     except SQLAlchemyError as e:
-        print(f"Error: Failed to write performance results to database: {e}",
-              file=sys.stderr)
+        print(
+            f"Error: Failed to write performance results to database: {e}",
+            file=sys.stderr,
+        )
         raise
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -106,13 +114,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--date",
         required=True,
-        help="Airflow execution date (ds) in YYYY-MM-DD format."
+        help="Airflow execution date (ds) in YYYY-MM-DD format.",
     )
     parser.add_argument(
-        "--days_ago",
-        type=int,
-        default=30,
-        help="Churn window in days (default: 30)."
+        "--days_ago", type=int, default=30, help="Churn window in days (default: 30)."
     )
 
     try:

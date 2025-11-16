@@ -1,7 +1,7 @@
 from functools import lru_cache
 
 # Assuming 'Settings' is the type returned by load_config
-from core.config import load_config, Settings
+from core.config import Settings, load_config
 from core.services.mlflow import MLflowClient
 
 

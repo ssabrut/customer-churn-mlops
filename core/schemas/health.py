@@ -13,6 +13,7 @@ class ServiceStatus(BaseModel):
         message (Optional[str]): An optional message providing additional
                                  details about the service's status.
     """
+
     status: str = Field(..., description="Service Status", examples=["healthy"])
     message: Optional[str] = Field(
         None, description="Status Message", examples=["connected successfully"]
@@ -37,6 +38,7 @@ class HealthResponse(BaseModel):
             service names (e.g., "database", "mlflow") to their
             individual ServiceStatus.
     """
+
     status: str = Field(..., description="Overall health status", example="ok")
     version: str = Field(..., description="Application version", example="0.1.0")
     environment: str = Field(

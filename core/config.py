@@ -52,7 +52,7 @@ class Settings(DefaultSettings):
 
     # Gradio config
     fastapi_url: str = Field(..., env="FASTAPI_URL")
-    
+
     # --- Modular variables (overwritten by load_config) ---
     # These have defaults for non-Docker, but are updated by load_config
     # based on the IS_DOCKER flag.
@@ -154,7 +154,7 @@ def load_config(project_root: str = os.getcwd()) -> Settings:
             "db_host": new_db_host,
             "db_port": new_db_port,
             "feast_repo_path": feast_repo_path,
-            "fastapi_url": new_fastapi_url
+            "fastapi_url": new_fastapi_url,
         }
     )
 

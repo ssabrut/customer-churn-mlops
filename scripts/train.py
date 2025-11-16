@@ -25,13 +25,9 @@ from xgboost import XGBClassifier
 
 from core import constant
 from core.config import load_config
-from core.constant import (
-    EXPERIMENT_NAME,
-    FEAST_REPO_PATH,
-    MLFLOW_S3_ENDPOINT_URL,
-    MLFLOW_TRACKING_URI,
-    MODEL_NAME,
-)
+from core.constant import (EXPERIMENT_NAME, FEAST_REPO_PATH,
+                           MLFLOW_S3_ENDPOINT_URL, MLFLOW_TRACKING_URI,
+                           MODEL_NAME)
 from core.utils.converting import DataFrameConverter
 
 

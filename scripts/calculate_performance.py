@@ -7,20 +7,22 @@ project_root = os.path.dirname(script_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+import argparse
+from datetime import datetime, timedelta
+
+import mlflow
 import pandas as pd
+from mlflow.exceptions import MlflowException
+from mlflow.tracking import MlflowClient
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
-import mlflow
-import argparse
-from datetime import datetime, timedelta
-from sklearn.metrics import f1_score, accuracy_score, roc_auc_score
-from mlflow.tracking import MlflowClient
-from mlflow.exceptions import MlflowException
 
-from core.constant import MODEL_NAME, APP_DB_USER, APP_DB_PASSWORD, APP_DB_NAME
+from core.config import Config, load_config
+from core.constant import APP_DB_NAME, APP_DB_PASSWORD, APP_DB_USER, MODEL_NAME
 from core.services.mlflow.factory import make_mlflow_service
-from core.config import load_config, Config
+
 
 def main(args: argparse.Namespace) -> None:
     """
@@ -72,16 +74,22 @@ def main(args: argparse.Namespace) -> None:
         with engine.connect() as conn:
             pass
     except SQLAlchemyError as e:
-        print(f"Error: Failed to create database engine or connection: {e}", file=sys.stderr)
+        print(
+            f"Error: Failed to create database engine or connection: {e}",
+            file=sys.stderr,
+        )
         raise ConnectionError("Database connection failed") from e
 
     try:
-        process_date_dt = (datetime.fromisoformat(args.date) -
-                           timedelta(days=args.days_ago))
-        process_date: str = process_date_dt.strftime('%Y-%m-%d')
+        process_date_dt = datetime.fromisoformat(args.date) - timedelta(
+            days=args.days_ago
+        )
+        process_date: str = process_date_dt.strftime("%Y-%m-%d")
     except ValueError as e:
-        print(f"Error: Invalid date format '{args.date}'. Must be YYYY-MM-DD.",
-              file=sys.stderr)
+        print(
+            f"Error: Invalid date format '{args.date}'. Must be YYYY-MM-DD.",
+            file=sys.stderr,
+        )
         raise
 
     # Use parameterized query to prevent SQL injection
@@ -92,9 +100,7 @@ def main(args: argparse.Namespace) -> None:
     """
     try:
         df: pd.DataFrame = pd.read_sql(
-            sql,
-            engine,
-            params={"process_date": process_date}
+            sql, engine, params={"process_date": process_date}
         )
     except SQLAlchemyError as e:
         print(f"Error: Failed to fetch performance data: {e}", file=sys.stderr)
@@ -111,7 +117,10 @@ def main(args: argparse.Namespace) -> None:
         auc: float = roc_auc_score(df["actual_churn"], df["prediction"])
     except ValueError as e:
         print(f"Error: Failed to calculate metrics. {e}", file=sys.stderr)
-        print("This can happen if 'actual_churn' contains only one class.", file=sys.stderr)
+        print(
+            "This can happen if 'actual_churn' contains only one class.",
+            file=sys.stderr,
+        )
         raise RuntimeError("Metric calculation failed") from e
 
     print(f"Date: {process_date} | F1: {f1:.4f} | Accuracy: {acc:.4f} | AUC: {auc:.4f}")
@@ -123,8 +132,11 @@ def main(args: argparse.Namespace) -> None:
             mlflow.log_metric(f"prod_roc_auc", auc)
         print("Successfully logged metrics to MLflow.")
     except MlflowException as e:
-        print(f"Error: Failed to log metrics to MLflow run {run_id}: {e}", file=sys.stderr)
+        print(
+            f"Error: Failed to log metrics to MLflow run {run_id}: {e}", file=sys.stderr
+        )
         raise
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -133,13 +145,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--date",
         required=True,
-        help="Airflow execution date (ds) in YYYY-MM-DD format."
+        help="Airflow execution date (ds) in YYYY-MM-DD format.",
     )
     parser.add_argument(
         "--days_ago",
         type=int,
         default=30,
-        help="Performance window in days (default: 30)."
+        help="Performance window in days (default: 30).",
     )
 
     try:
@@ -150,7 +162,7 @@ if __name__ == "__main__":
         ConnectionError,
         SQLAlchemyError,
         MlflowException,
-        RuntimeError
+        RuntimeError,
     ) as e:
         # Catch expected, handled errors from main()
         print(f"\nScript terminated due to an error: {e}", file=sys.stderr)

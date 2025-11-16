@@ -1,7 +1,7 @@
 from functools import lru_cache
 
 # Assuming 'Settings' is the type returned by load_config
-from core.config import load_config, Settings
+from core.config import Settings, load_config
 from core.services.postgres import PostgresClient
 
 
@@ -32,4 +32,6 @@ def make_postgres_service() -> PostgresClient:
         raise RuntimeError(f"Failed to initialize Postgres service: {e}") from e
     except Exception as e:
         # A general catch-all for any other unexpected initialization error.
-        raise RuntimeError(f"An unexpected error occurred during Postgres service initialization: {e}") from e
+        raise RuntimeError(
+            f"An unexpected error occurred during Postgres service initialization: {e}"
+        ) from e

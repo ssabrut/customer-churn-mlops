@@ -22,6 +22,7 @@ class ChurnRequest(BaseModel):
                                   last interaction.
         Gender (str): The gender of the customer.
     """
+
     Age: float = Field(..., alias="Age")
     Support_Calls: float = Field(..., alias="Support Calls")
     Payment_Delay: float = Field(..., alias="Payment Delay")
@@ -58,6 +59,7 @@ class ChurnResponse(BaseModel):
         features (Dict[str, Any]): A dictionary of the original input
                                    features used for the prediction.
     """
+
     prediction: int
     probability: float
     version: Any

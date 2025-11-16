@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends
 
 from core.config import Settings
 from core.dependencies import SettingsDependencies
-from core.services.mlflow.factory import make_mlflow_service
-from core.services.postgres.factory import make_postgres_service
 from core.schemas import HealthResponse, ServiceStatus
 from core.services.mlflow import MLflowClient
+from core.services.mlflow.factory import make_mlflow_service
 from core.services.postgres import PostgresClient
+from core.services.postgres.factory import make_postgres_service
 
 router = APIRouter()
 
