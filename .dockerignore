@@ -1,0 +1,42 @@
+# Git files
+.git/
+.gitignore
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+env/
+venv/
+.venv/
+
+# Secrets
+.env
+*.env
+
+# IDE / OS files
+.idea/
+.vscode/
+*.DS_Store
+
+# Local data/logs
+logs/
+*.log
+*.db
+*.sqlite3
+
+# Airflow/Grafana configs (not needed in this image)
+dags/
+plugins/
+grafana/
