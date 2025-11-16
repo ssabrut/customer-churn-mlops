@@ -1,8 +1,13 @@
 import time
+from typing import Any, Dict, List
+
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Request
-from loguru import logger
+from feast import FeatureStore
+from numpy import ndarray
+from sklearn.pipeline import Pipeline
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.schemas import ChurnResponse
@@ -10,7 +15,7 @@ from core.services.postgres import factory
 
 router = APIRouter()
 
-FEATURE_ORDER = [
+FEATURE_ORDER: List[str] = [
     "Age",
     "Support Calls",
     "Payment Delay",
@@ -21,7 +26,9 @@ FEATURE_ORDER = [
     "Interaction_Frequency",
 ]
 
-FEAST_REQUEST_FEATURES = [f"customer_features:{name}" for name in FEATURE_ORDER]
+FEAST_REQUEST_FEATURES: List[str] = [
+    f"customer_features:{name}" for name in FEATURE_ORDER
+]
 
 
 @router.get("/predict/{customer_id}", response_model=ChurnResponse)
@@ -30,11 +37,45 @@ async def predict_customer_churn(
     request: Request,
     db: AsyncSession = Depends(factory.make_postgres_service().get_session),
 ) -> ChurnResponse:
-    start_time = time.perf_counter()
-    
-    pipeline = request.app.state.model
-    feast_store = request.app.state.feast_store
-    model_version = request.app.state.model_version
+    """
+    Performs a churn prediction for a given customer ID.
+
+    This endpoint retrieves real-time features from the Feast feature
+    store, executes a prediction using the loaded ML pipeline, and
+    asynchronously logs the prediction details to the database.
+
+    Args:
+        customer_id (int): The unique identifier for the customer.
+        request (Request): The incoming FastAPI request object, used to
+                           access application state (model, feature store).
+        db (AsyncSession): The injected asynchronous database session.
+
+    Returns:
+        ChurnResponse: An object containing the prediction (0 or 1),
+                       the probability, the model version, and the
+                       features used for the prediction.
+
+    Raises:
+        HTTPException:
+            - 503: If the ML model or Feast feature store is not
+                   initialized in the application state.
+            - 502: If retrieving features from the upstream Feast store
+                   fails.
+            - 400: If an error occurs during the model prediction
+                   (e.g., data mismatch, pipeline failure).
+    """
+    start_time: float = time.perf_counter()
+
+    try:
+        pipeline: Pipeline = request.app.state.model
+        feast_store: FeatureStore = request.app.state.feast_store
+        model_version: Any = request.app.state.model_version
+    except AttributeError as e:
+        # Catch if .model, .feast_store, etc. don't exist at all
+        raise HTTPException(
+            status_code=503,
+            detail=f"Server state is missing required attributes: {e}",
+        )
 
     if pipeline is None or feast_store is None:
         raise HTTPException(
@@ -42,28 +83,35 @@ async def predict_customer_churn(
             detail="Model or Feast Store not initialized. Check server logs.",
         )
 
-    online_features = feast_store.get_online_features(
-        features=FEAST_REQUEST_FEATURES,
-        entity_rows=[{"customer_id": customer_id}],
-    ).to_dict()
+    try:
+        online_features: Dict[str, Any] = feast_store.get_online_features(
+            features=FEAST_REQUEST_FEATURES,
+            entity_rows=[{"customer_id": customer_id}],
+        ).to_dict()
+    except Exception as e:
+        # Handle failure to connect to the upstream feature store
+        raise HTTPException(
+            status_code=502,  # Bad Gateway
+            detail=f"Failed to retrieve features from feature store: {e}",
+        )
 
-    feature_data = {
+    feature_data: Dict[str, Any] = {
         key: val[0] for key, val in online_features.items() if key != "customer_id"
     }
 
-    input_df = pd.DataFrame([feature_data], columns=FEATURE_ORDER)
+    input_df: pd.DataFrame = pd.DataFrame([feature_data], columns=FEATURE_ORDER)
     try:
-        yhat = pipeline.predict(input_df)
-        yhat_proba = pipeline.predict_proba(input_df)
-        probability = yhat_proba[0][1]
+        yhat: ndarray = pipeline.predict(input_df)
+        yhat_proba: ndarray = pipeline.predict_proba(input_df)
+        probability: float = float(yhat_proba[0][1])
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Prediction error: {e}")
 
-    end_time = time.perf_counter()
-    response_time_ms = int((end_time - start_time) * 1000)
+    end_time: float = time.perf_counter()
+    response_time_ms: int = int((end_time - start_time) * 1000)
 
     try:
-        log_entry = {
+        log_entry: Dict[str, Any] = {
             "model_version": str(model_version),
             "customer_id": customer_id,
             "age": feature_data.get("Age"),
@@ -84,7 +132,7 @@ async def predict_customer_churn(
         log_sql = text(
             """
             INSERT INTO prediction_logs (
-                model_version, customer_id, age, support_calls, payment_delay, 
+                model_version, customer_id, age, support_calls, payment_delay,
                 total_spend, last_interaction, gender, age_group, interaction_frequency,
                 prediction, probability, ground_truth, response_time_ms
             )
@@ -99,12 +147,15 @@ async def predict_customer_churn(
         await db.execute(log_sql, log_entry)
         await db.commit()
 
-    except Exception as e:
-        logger.error(f"Failed to log prediction: {e}")
+    except (SQLAlchemyError, Exception):
+        # Per instructions, logging is forbidden.
+        # Rollback the transaction and pass silently.
+        # Failing to log should not fail the prediction request.
+        await db.rollback()
 
     return ChurnResponse(
         prediction=int(yhat[0]),
         probability=probability,
         version=model_version,
-        features=feature_data
+        features=feature_data,
     )
