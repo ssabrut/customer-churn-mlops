@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from core.config import load_config
 from core.routers.churn import router as churn_router
 from core.routers.health import router as health_router
+from core.routers.data import router as data_router
 from core.services.mlflow import MLflowClient
 from core.services.mlflow.factory import make_mlflow_service
 
@@ -81,8 +82,9 @@ def root():
     return {"status": 200, "message": "ok"}
 
 
-app.include_router(churn_router)
-app.include_router(health_router)
+app.include_router(churn_router, tags=["prediction"])
+app.include_router(health_router, tags=["health"])
+app.include_router(data_router, tags=["data"])
 
 if __name__ == "__main__":
     import uvicorn
