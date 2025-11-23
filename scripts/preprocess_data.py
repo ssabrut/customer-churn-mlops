@@ -7,24 +7,15 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from datetime import datetime, timedelta
-from typing import Any
 
 import pandas as pd
 from loguru import logger
 from sqlalchemy import create_engine, exc
 from sqlalchemy.engine import Engine
 
-from core.config import load_config
-from core.constant import APP_TABlE_NAME
 from core.transformer import ChurnFeatureTransformer
 
 OUTPUT_PATH: str = f"{project_root}/data/preprocessed/train.parquet"
-
-try:
-    config: Any = load_config()
-except EnvironmentError as e:
-    logger.error(f"Configuration failed to load: {e}")
-    sys.exit(1)
 
 
 def main() -> None:
@@ -45,11 +36,11 @@ def main() -> None:
 
     # --- 1. Database Connection and Data Loading ---
     try:
-        db_user: str = config.app_db_user
-        db_password: str = config.app_db_password
-        db_name: str = config.app_db_name
-        db_host: str = config.db_host
-        db_port: int = config.db_port
+        db_user: str = os.environ.get("APP_DB_USER")
+        db_password: str = os.environ.get("APP_DB_PASSWORD")
+        db_name: str = os.environ.get("APP_DB_NAME")
+        db_host: str = os.environ.get("APP_DB_HOST")
+        db_port: int = os.environ.get("APP_DB_PORT")
 
         engine_url: str = (
             f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
@@ -57,10 +48,8 @@ def main() -> None:
         engine: Engine = create_engine(engine_url)
 
         logger.info(f"Connecting to {db_host}:{db_port}...")
-        df: pd.DataFrame = pd.read_sql(f"SELECT * FROM {APP_TABlE_NAME}", engine)
-        logger.success(
-            f"Successfully read {len(df)} rows from table '{APP_TABlE_NAME}'."
-        )
+        df: pd.DataFrame = pd.read_sql(f"SELECT * FROM customers", engine)
+        logger.success(f"Successfully read {len(df)} rows from table 'customers'.")
 
     except (exc.OperationalError, exc.SQLAlchemyError) as e:
         logger.error(

@@ -29,8 +29,7 @@ import sys
 from datetime import timedelta
 
 try:
-    from feast import (Entity, FeatureView, Field, FileSource, PushSource,
-                       ValueType)
+    from feast import Entity, FeatureView, Field, FileSource, PushSource, ValueType
     from feast.types import Float32, Int32
 except ImportError:
     print(

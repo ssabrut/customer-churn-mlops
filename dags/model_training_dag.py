@@ -52,10 +52,10 @@ DB_ENV_KEYS: List[str] = [
 ]
 
 MLFLOW_ENV_KEYS: List[str] = [
-    "MLFLOW_TRACKING_URI",
-    "MLFLOW_S3_ENDPOINT_URL",
     "AWS_ACCESS_KEY_ID",
     "AWS_SECRET_ACCESS_KEY",
+    "MLFLOW_TRACKING_URI",
+    "MLFLOW_S3_ENDPOINT_URL",
 ]
 
 FEAST_ENV_KEYS: List[str] = ["FEAST_REDIS_URL"]
@@ -87,8 +87,8 @@ with DAG(
         command="python scripts/preprocess_data.py",
         network_mode="customer-churn-mlops_internal",
         environment=db_env_vars,
-        do_xcom_push=True,
         auto_remove=True,
+        mount_tmp_dir=False,
         tty=True,
     )
 
@@ -112,7 +112,9 @@ with DAG(
         command="python scripts/train.py",
         network_mode="customer-churn-mlops_internal",
         environment=mlflow_env_vars,
+        docker_url="unix://var/run/docker.sock",
         auto_remove=True,
+        mount_tmp_dir=False,
         tty=True,
     )
 

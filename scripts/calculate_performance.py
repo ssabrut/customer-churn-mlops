@@ -19,7 +19,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-from core.config import Config, load_config
 from core.constant import APP_DB_NAME, APP_DB_PASSWORD, APP_DB_USER, MODEL_NAME
 from core.services.mlflow.factory import make_mlflow_service
 
@@ -45,7 +44,6 @@ def main(args: argparse.Namespace) -> None:
     """
     try:
         client: MlflowClient = make_mlflow_service()
-        config: Config = load_config()
     except MlflowException as e:
         print(f"Error: Failed to initialize MLflow service: {e}", file=sys.stderr)
         raise ConnectionError("MLflow service connection failed") from e
@@ -67,7 +65,7 @@ def main(args: argparse.Namespace) -> None:
     try:
         db_url = (
             f"postgresql://{APP_DB_USER}:{APP_DB_PASSWORD}@"
-            f"{config.db_host}:{config.db_port}/{APP_DB_NAME}"
+            f"{os.environ.get("APP_DB_HOST")}:{os.environ.get("APP_DB_PORT")}/{APP_DB_NAME}"
         )
         engine: Engine = create_engine(db_url)
         # Test connection

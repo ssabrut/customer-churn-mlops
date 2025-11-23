@@ -121,7 +121,7 @@ services:
     ports:
       - "5436:5432"
     volumes:
-      - airflow_posstgres_data:/var/lib/postgresql/data
+      - airflow_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U airflow"]
       interval: 5s
@@ -205,10 +205,6 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    environment:
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - MLFLOW_S3_ENDPOINT_URL=${MLFLOW_S3_ENDPOINT_URL}
     ports:
       - "5050:5000"
     networks:
@@ -219,7 +215,13 @@ services:
         condition: service_healthy
       mc_setup:
         condition: service_completed_successfully
-    entrypoint: mlflow server --host 0.0.0.0 --artifacts-destination s3://mlartifacts --backend-store-uri postgresql://${MLFLOW_DB_USER}:${MLFLOW_DB_PASSWORD}@mlflow_postgres:5432/${MLFLOW_DB_NAME}
+    entrypoint: >
+      mlflow server 
+      --host 0.0.0.0 
+      --artifacts-destination s3://mlartifacts 
+      --backend-store-uri postgresql://${MLFLOW_DB_USER}:${MLFLOW_DB_PASSWORD}@mlflow_postgres:5432/${MLFLOW_DB_NAME}
+      --allowed-hosts "*"
+      --cors-allowed-origins "*"
 
   redis:
     image: redis:6.2-alpine
@@ -303,7 +305,7 @@ networks:
     driver: bridge
 
 volumes:
-  airflow_posstgres_data:
+  airflow_postgres_data:
   grafana_data:
   minio_new_volume:
   mlflow_postgres_data:

@@ -527,7 +527,7 @@ psutil==7.1.3
     #   apache-airflow-core
     #   apache-airflow-task-sdk
     #   feast
-psycopg2==2.9.11
+psycopg2-binary==2.9.11
     # via customer-churn-mlops (pyproject.toml)
 ptyprocess==0.7.0
     # via pexpect

@@ -13,6 +13,7 @@ from typing import Any, List, Optional, Tuple
 import gradio as gr
 import httpx
 import pandas as pd
+from loguru import logger
 
 from core.config import load_config
 
@@ -145,55 +146,112 @@ def predict_churn(
         return "Error", 0.0, "N/A", None, error_msg
 
 
+def load_data(table_choice: str) -> Tuple[pd.DataFrame, str]:
+    table_map = {
+        "Prediction Logs": "predictions",
+        "Model Performance": "performance",
+        "Customers": "customers",
+    }
+
+    table_key = table_map.get(table_choice)
+
+    if not table_key:
+        return pd.DataFrame(), "Please select a table to load."
+
+    try:
+        config = load_config()
+    except Exception as e:
+        return pd.DataFrame(), f"Configuration Error: {e}"
+
+    try:
+        api_url = f"{config.fastapi_url}/data/{table_key}"
+        logger.info(f"Calling API: {api_url}")
+
+        # Give more time for potentially large data queries
+        with httpx.Client(timeout=30.0) as client:
+            response = client.get(api_url)
+            response.raise_for_status()
+
+        data = response.json()
+        if not data:
+            return pd.DataFrame(), f"No data found in table '{table_key}'."
+
+        return (
+            pd.DataFrame(data),
+            f"Successfully loaded {len(data)} rows from '{table_key}'.",
+        )
+
+    except httpx.ConnectError as e:
+        return pd.DataFrame(), f"Connection Error: Could not connect to API. {e}"
+    except httpx.HTTPStatusError as e:
+        error_detail = e.response.json().get("detail", e.response.text)
+        return pd.DataFrame(), f"API Error ({e.response.status_code}): {error_detail}"
+    except Exception as e:
+        return pd.DataFrame(), f"An unexpected error occurred: {e}"
+
+
 # --- Build the Gradio Interface ---
 with gr.Blocks(theme=gr.themes.Soft()) as demo:
-    gr.Markdown(
-        """
-        #  Customer Churn Prediction
-        Enter a Customer ID to fetch real-time features from the Feast online store
-        and get a live prediction from the deployed model.
-        """
-    )
+    gr.Markdown("# Customer Churn Prediction & Data Explorer")
 
-    with gr.Row():
-        # --- INPUTS ---
-        with gr.Column(scale=1):
-            customer_id_input = gr.Number(
-                label="Customer ID", value=1001, precision=0  # Requires whole numbers
+    with gr.Tab("Live Prediction"):
+        gr.Markdown(
+            """
+            Enter a Customer ID to fetch real-time features from the Feast online store
+            and get a live prediction from the deployed model.
+            """
+        )
+        with gr.Row():
+            # --- INPUTS ---
+            with gr.Column(scale=1):
+                customer_id_input = gr.Number(
+                    label="Customer ID", value=1001, precision=0
+                )
+                predict_button = gr.Button("Predict", variant="primary")
+
+            # --- OUTPUTS ---
+            with gr.Column(scale=3):
+                with gr.Tabs():
+                    with gr.Tab("Prediction Result"):
+                        prediction_output = gr.Label(label="Prediction")
+                        probability_output = gr.Slider(
+                            label="Churn Probability",
+                            minimum=0.0,
+                            maximum=1.0,
+                        )
+                        version_output = gr.Textbox(
+                            label="Model Version", interactive=False
+                        )
+                    with gr.Tab("Features Used"):
+                        features_output = gr.Dataframe(
+                            label="Online Features",
+                            headers=FEATURE_ORDER,
+                            datatype=["number"] * len(FEATURE_ORDER),
+                        )
+                    with gr.Tab("Raw API Response"):
+                        json_output = gr.JSON(label="API Response")
+
+    with gr.Tab("Data Explorer"):
+        gr.Markdown(
+            "Browse the latest 100 rows from the production database. "
+            "Select a table and click 'Load Data'."
+        )
+        with gr.Row():
+            table_select_input = gr.Dropdown(
+                label="Select Table",
+                choices=["Prediction Logs", "Model Performance", "Customers"],
             )
-            predict_button = gr.Button("Predict", variant="primary")
+            load_data_button = gr.Button("Load Data", variant="secondary")
 
-        # --- OUTPUTS ---
-        with gr.Column(scale=3):
-            with gr.Tabs():
-                # --- Tab 1: Prediction Result (Default) ---
-                with gr.Tab("Prediction Result"):
-                    prediction_output = gr.Label(label="Prediction")
-                    probability_output = gr.Slider(
-                        label="Churn Probability",
-                        minimum=0.0,
-                        maximum=1.0,
-                    )
-                    version_output = gr.Textbox(
-                        label="Model Version", interactive=False
-                    )
+        data_explorer_status = gr.Textbox(
+            label="Status",
+            interactive=False,
+            placeholder="Click 'Load Data' to see results...",
+        )
+        data_explorer_output = gr.Dataframe(
+            label="Table Data", interactive=False, wrap=True, max_height=600
+        )
 
-                # --- Tab 2: Features Used ---
-                with gr.Tab("Features Used"):
-                    gr.Markdown(
-                        "These features were fetched *in real-time* from the online store to make the prediction."
-                    )
-                    features_output = gr.Dataframe(
-                        label="Online Features",
-                        headers=FEATURE_ORDER,
-                        datatype=["number"] * len(FEATURE_ORDER),
-                    )
-
-                # --- Tab 3: Raw API Response ---
-                with gr.Tab("Raw API Response"):
-                    json_output = gr.JSON(label="API Response")
-
-    # Connect the button to the function and components
     predict_button.click(
         fn=predict_churn,
         inputs=[customer_id_input],
@@ -204,6 +262,12 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
             features_output,
             json_output,
         ],
+    )
+
+    load_data_button.click(
+        fn=load_data,
+        inputs=[table_select_input],
+        outputs=[data_explorer_output, data_explorer_status],
     )
 
 if __name__ == "__main__":

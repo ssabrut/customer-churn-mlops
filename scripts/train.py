@@ -23,12 +23,16 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 
-from core import constant
-from core.config import load_config
-from core.constant import (EXPERIMENT_NAME, FEAST_REPO_PATH,
-                           MLFLOW_S3_ENDPOINT_URL, MLFLOW_TRACKING_URI,
-                           MODEL_NAME)
 from core.utils.converting import DataFrameConverter
+
+try:
+    MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI")
+    MLFLOW_S3_ENDPOINT_URL = os.environ.get("MLFLOW_S3_ENDPOINT_URL")
+    EXPERIMENT_NAME = "churn_prediction"
+    TARGET = "Churn"
+    MODEL_NAME = "XGBoostChurnModel"
+except EnvironmentError as e:
+    logger.error(e)
 
 
 def main() -> None:
@@ -59,13 +63,6 @@ def main() -> None:
         None
     """
 
-    # --- 1. Load Configuration ---
-    try:
-        config: Any = load_config()
-    except EnvironmentError as e:
-        logger.error(f"Configuration failed to load: {e}")
-        sys.exit(1)
-
     # --- 2. MLflow Setup ---
     logger.info("Configuring MLflow...")
     if not MLFLOW_TRACKING_URI or not MLFLOW_S3_ENDPOINT_URL:
@@ -75,6 +72,8 @@ def main() -> None:
         )
         sys.exit(1)
 
+    logger.info(f"Setting tracking uri to: {MLFLOW_TRACKING_URI}")
+    logger.info(f"Setting S3 uri to: {MLFLOW_S3_ENDPOINT_URL}")
     try:
         mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
         experiment: Experiment | None = mlflow.get_experiment_by_name(EXPERIMENT_NAME)
@@ -83,6 +82,7 @@ def main() -> None:
             mlflow.create_experiment(EXPERIMENT_NAME)
         mlflow.set_experiment(EXPERIMENT_NAME)
     except MlflowException as e:
+        logger.debug(f"Current tracking uri: {mlflow.get_tracking_uri()}")
         logger.error(f"Fatal Error: Failed to configure MLflow: {e}")
         sys.exit(1)
 
@@ -90,7 +90,7 @@ def main() -> None:
 
     # --- 3. Feast Store Initialization ---
     try:
-        store: FeatureStore = FeatureStore(repo_path=FEAST_REPO_PATH)
+        store: FeatureStore = FeatureStore(repo_path="feature_repo")
     except Exception as e:
         logger.error(f"Fatal Error: Failed to initialize Feast FeatureStore: {e}")
         sys.exit(1)
@@ -153,8 +153,8 @@ def main() -> None:
 
     training_df = training_df.drop(columns=cols_to_drop)
 
-    X: DataFrame = training_df.drop(constant.TARGET, axis=1)
-    y: Series = training_df[constant.TARGET]
+    X: DataFrame = training_df.drop(TARGET, axis=1)
+    y: Series = training_df[TARGET]
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.1, random_state=42

@@ -14,7 +14,7 @@ from sqlalchemy import create_engine, exc, text
 from sqlalchemy.engine import Engine
 
 from core.config import load_config
-from core.constant import APP_TABlE_NAME
+from core.constant import APP_TABLE_NAME
 
 CSV_PATH: str = f"{project_root}/data/raw/train.csv"
 CREATE_PREDICTION_LOGS_TABLE: str = """
@@ -117,11 +117,11 @@ def main(retries: int = 5, delay: int = 5) -> None:
                 conn.commit()
 
             # Write data to SQL
-            logger.info(f"Writing {len(df)} rows to table '{APP_TABlE_NAME}'...")
-            df.to_sql(APP_TABlE_NAME, engine, if_exists="replace", index=False)
+            logger.info(f"Writing {len(df)} rows to table '{APP_TABLE_NAME}'...")
+            df.to_sql(APP_TABLE_NAME, engine, if_exists="replace", index=False)
 
             logger.success(
-                f"Successfully populated '{APP_TABlE_NAME}' with {len(df)} rows."
+                f"Successfully populated '{APP_TABLE_NAME}' with {len(df)} rows."
             )
             return  # Success
 

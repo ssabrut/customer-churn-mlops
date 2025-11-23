@@ -9,8 +9,8 @@ from pydantic import ValidationError
 
 from core.config import load_config
 from core.routers.churn import router as churn_router
-from core.routers.health import router as health_router
 from core.routers.data import router as data_router
+from core.routers.health import router as health_router
 from core.services.mlflow import MLflowClient
 from core.services.mlflow.factory import make_mlflow_service
 
