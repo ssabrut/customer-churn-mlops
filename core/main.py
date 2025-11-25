@@ -34,14 +34,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         latest_model = mlflow_client.client.get_latest_versions("XGBoostChurnModel")
 
         if not latest_model:
-            logger.warning("No Production model found. Falling back to Staging or None.")
+            logger.warning(
+                "No Production model found. Falling back to Staging or None."
+            )
             app.state.model = None
         else:
             prod_version = latest_model[0].version
             logger.info(f"Loading Production model version: {prod_version}")
-            
-            model, version = mlflow_client.load_model("XGBoostChurnModel", version=prod_version)
-            
+
+            model, version = mlflow_client.load_model(
+                "XGBoostChurnModel", version=prod_version
+            )
+
             app.state.model = model
             app.state.model_version = version
             logger.success(f"Successfully loaded model version '{version}'.")

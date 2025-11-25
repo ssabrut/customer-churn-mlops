@@ -2,14 +2,14 @@ import time
 from typing import Any, Dict, List
 
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from feast import FeatureStore
+from loguru import logger
 from numpy import ndarray
 from sklearn.pipeline import Pipeline
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from loguru import logger
 
 from core.schemas import ChurnResponse
 from core.services.postgres import factory
@@ -31,6 +31,7 @@ FEAST_REQUEST_FEATURES: List[str] = [
     f"customer_features:{name}" for name in FEATURE_ORDER
 ]
 
+
 async def log_prediction_background(db_session_factory, log_entry: dict):
     async with db_session_factory() as db:
         try:
@@ -48,7 +49,7 @@ async def log_prediction_background(db_session_factory, log_entry: dict):
                 )
             """
             )
-            
+
             await db.execute(log_sql, log_entry)
             await db.commit()
         except Exception as e:
@@ -58,9 +59,7 @@ async def log_prediction_background(db_session_factory, log_entry: dict):
 
 @router.get("/predict/{customer_id}", response_model=ChurnResponse)
 async def predict_customer_churn(
-    customer_id: int,
-    request: Request,
-    background_tasks: BackgroundTasks
+    customer_id: int, request: Request, background_tasks: BackgroundTasks
 ) -> ChurnResponse:
     """
     Performs a churn prediction for a given customer ID.
@@ -153,7 +152,9 @@ async def predict_customer_churn(
     }
 
     postgres_factory = factory.make_postgres_service()
-    background_tasks.add_task(log_prediction_background, postgres_factory.session_maker, log_entry)
+    background_tasks.add_task(
+        log_prediction_background, postgres_factory.session_maker, log_entry
+    )
 
     return ChurnResponse(
         prediction=int(yhat[0]),

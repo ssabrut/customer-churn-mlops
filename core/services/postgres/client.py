@@ -55,9 +55,7 @@ class PostgresClient:
 
         try:
             self.engine = create_async_engine(self.base_url, echo=settings.debug)
-            self.session_maker = async_sessionmaker(
-                self.engine, expire_on_commit=False
-            )
+            self.session_maker = async_sessionmaker(self.engine, expire_on_commit=False)
         except (SQLAlchemyError, ValueError) as e:
             # Catch specific errors from engine creation (e.g., bad URL, driver issues)
             raise RuntimeError(f"Failed to create database engine: {e}") from e
@@ -65,33 +63,6 @@ class PostgresClient:
             # A general catch-all for any other unexpected initialization error
             raise RuntimeError(
                 f"An unexpected error occurred during engine creation: {e}"
-            ) from e
-
-    def get_sync_engine(self) -> Engine:
-        """
-        Creates and returns a synchronous SQLAlchemy engine.
-
-        This is useful for operations that do not support async,
-        such as database migrations (e.g., Alembic).
-
-        Returns:
-            Engine: A synchronous SQLAlchemy Engine instance.
-
-        Raises:
-            RuntimeError: If the synchronous engine creation fails due to
-                          connection errors or invalid configuration.
-        """
-        sync_url: str = self.base_url.replace("+asyncpg", "")
-
-        try:
-            return create_engine(sync_url)
-        except (SQLAlchemyError, ValueError) as e:
-            raise RuntimeError(
-                f"Failed to create synchronous database engine: {e}"
-            ) from e
-        except Exception as e:
-            raise RuntimeError(
-                f"An unexpected error occurred during sync engine creation: {e}"
             ) from e
 
     async def health_check(self) -> Dict[str, str]:

@@ -12,15 +12,14 @@ from datetime import datetime, timedelta
 
 import mlflow
 import pandas as pd
+from loguru import logger
+from sqlalchemy import text
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
-
-from core.constant import APP_DB_NAME, APP_DB_PASSWORD, APP_DB_USER, MODEL_NAME
-from core.services.mlflow.factory import make_mlflow_service
 
 
 def main(args: argparse.Namespace) -> None:
@@ -42,22 +41,32 @@ def main(args: argparse.Namespace) -> None:
         ValueError: If the provided 'date' is not a valid ISO format or
                     if metric calculation fails due to invalid data.
     """
+    APP_DB_NAME: str = os.environ.get("APP_DB_NAME")
+    APP_DB_PASSWORD: str = os.environ.get("APP_DB_PASSWORD")
+    APP_DB_USER: str = os.environ.get("APP_DB_USER")
+    APP_DB_HOST: str = os.environ.get("APP_DB_HOST")
+    APP_DB_PORT: str = os.environ.get("APP_DB_PORT")
+    MLFLOW_TRACKING_URI: str = os.environ.get("MLFLOW_TRACKING_URI")
+    MODEL_NAME: str = "XGBoostChurnModel"
+
     try:
-        client: MlflowClient = make_mlflow_service()
+        client: MlflowClient = MlflowClient(
+            tracking_uri=MLFLOW_TRACKING_URI, registry_uri=MLFLOW_TRACKING_URI
+        )
     except MlflowException as e:
-        print(f"Error: Failed to initialize MLflow service: {e}", file=sys.stderr)
+        logger.critical(f"Error: Failed to initialize MLflow service: {e}")
         raise ConnectionError("MLflow service connection failed") from e
     except Exception as e:
-        print(f"Error: Failed to load configuration: {e}", file=sys.stderr)
+        logger.critical(f"Error: Failed to load configuration: {e}")
         raise
 
     try:
         # Get the run ID for the *current* production model
-        prod_version = client._client.get_latest_versions(MODEL_NAME)[0]
+        prod_version = client.get_latest_versions(MODEL_NAME)[0]
         run_id: str = prod_version.run_id
-        print(f"Logging metrics to production model run: {run_id}")
+        logger.success(f"Logging metrics to production model run: {run_id}")
     except (MlflowException, IndexError) as e:
-        print(f"Error: Could not find production model run_id. {e}", file=sys.stderr)
+        logger.error(f"Error: Could not find production model run_id. {e}")
         # Fail fast: we should not create a new run
         raise RuntimeError(f"Could not find production model '{MODEL_NAME}'") from e
 
@@ -65,17 +74,14 @@ def main(args: argparse.Namespace) -> None:
     try:
         db_url = (
             f"postgresql://{APP_DB_USER}:{APP_DB_PASSWORD}@"
-            f"{os.environ.get("APP_DB_HOST")}:{os.environ.get("APP_DB_PORT")}/{APP_DB_NAME}"
+            f"{APP_DB_HOST}:{APP_DB_PORT}/{APP_DB_NAME}"
         )
         engine: Engine = create_engine(db_url)
         # Test connection
         with engine.connect() as conn:
             pass
     except SQLAlchemyError as e:
-        print(
-            f"Error: Failed to create database engine or connection: {e}",
-            file=sys.stderr,
-        )
+        logger.critical(f"Error: Failed to create database engine or connection: {e}")
         raise ConnectionError("Database connection failed") from e
 
     try:
@@ -84,28 +90,25 @@ def main(args: argparse.Namespace) -> None:
         )
         process_date: str = process_date_dt.strftime("%Y-%m-%d")
     except ValueError as e:
-        print(
-            f"Error: Invalid date format '{args.date}'. Must be YYYY-MM-DD.",
-            file=sys.stderr,
-        )
+        logger.error(f"Error: Invalid date format '{args.date}'. Must be YYYY-MM-DD.")
         raise
 
     # Use parameterized query to prevent SQL injection
-    sql: str = """
+    sql = text("""
         SELECT prediction, actual_churn
         FROM model_performance
         WHERE process_date > :process_date
-    """
+    """)
     try:
         df: pd.DataFrame = pd.read_sql(
             sql, engine, params={"process_date": process_date}
         )
     except SQLAlchemyError as e:
-        print(f"Error: Failed to fetch performance data: {e}", file=sys.stderr)
+        logger.error(f"Error: Failed to fetch performance data: {e}")
         raise
 
     if df.empty:
-        print("No performance data found for this date. Exiting.")
+        logger.warning("No performance data found for this date. Exiting.")
         return
 
     # 4. Calculate metrics
@@ -114,25 +117,22 @@ def main(args: argparse.Namespace) -> None:
         acc: float = accuracy_score(df["actual_churn"], df["prediction"])
         auc: float = roc_auc_score(df["actual_churn"], df["prediction"])
     except ValueError as e:
-        print(f"Error: Failed to calculate metrics. {e}", file=sys.stderr)
-        print(
-            "This can happen if 'actual_churn' contains only one class.",
-            file=sys.stderr,
-        )
+        logger.error(f"Error: Failed to calculate metrics. {e}")
+        logger.error("This can happen if 'actual_churn' contains only one class.")
         raise RuntimeError("Metric calculation failed") from e
 
-    print(f"Date: {process_date} | F1: {f1:.4f} | Accuracy: {acc:.4f} | AUC: {auc:.4f}")
+    logger.success(
+        f"Date: {process_date} | F1: {f1:.4f} | Accuracy: {acc:.4f} | AUC: {auc:.4f}"
+    )
 
     try:
         with mlflow.start_run(run_id=run_id):
             mlflow.log_metric(f"prod_f1_score", f1)
             mlflow.log_metric(f"prod_accuracy", acc)
             mlflow.log_metric(f"prod_roc_auc", auc)
-        print("Successfully logged metrics to MLflow.")
+        logger.success("Successfully logged metrics to MLflow.")
     except MlflowException as e:
-        print(
-            f"Error: Failed to log metrics to MLflow run {run_id}: {e}", file=sys.stderr
-        )
+        logger.error(f"Error: Failed to log metrics to MLflow run {run_id}: {e}")
         raise
 
 
@@ -163,9 +163,9 @@ if __name__ == "__main__":
         RuntimeError,
     ) as e:
         # Catch expected, handled errors from main()
-        print(f"\nScript terminated due to an error: {e}", file=sys.stderr)
+        logger.error(f"\nScript terminated due to an error: {e}")
         sys.exit(1)
     except Exception as e:
         # Catch any other unexpected errors
-        print(f"\nScript terminated due to an unexpected error: {e}", file=sys.stderr)
+        logger.error(f"\nScript terminated due to an unexpected error: {e}")
         sys.exit(1)
