@@ -24,13 +24,13 @@ class PostgresClient:
         base_url (str): The asynchronous database connection string
                         (e.g., "postgresql+asyncpg://...").
         engine (AsyncEngine): The SQLAlchemy asynchronous engine instance.
-        session_factory (async_sessionmaker[AsyncSession]): The factory
+        session_maker (async_sessionmaker[AsyncSession]): The factory
             for creating new asynchronous sessions.
     """
 
     base_url: str
     engine: AsyncEngine
-    session_factory: async_sessionmaker[AsyncSession]
+    session_maker: async_sessionmaker[AsyncSession]
 
     def __init__(self, settings: Settings) -> None:
         """
@@ -55,7 +55,7 @@ class PostgresClient:
 
         try:
             self.engine = create_async_engine(self.base_url, echo=settings.debug)
-            self.session_factory = async_sessionmaker(
+            self.session_maker = async_sessionmaker(
                 self.engine, expire_on_commit=False
             )
         except (SQLAlchemyError, ValueError) as e:
@@ -106,7 +106,7 @@ class PostgresClient:
                             'unhealthy') and a descriptive 'message'.
         """
         try:
-            async with self.session_factory() as session:
+            async with self.session_maker() as session:
                 await session.execute(text("SELECT 1"))
 
             return {"status": "healthy", "message": "Postgres service is running"}
@@ -131,7 +131,7 @@ class PostgresClient:
             Exception: Re-raises any exception that occurs within the
                        session block after attempting a rollback.
         """
-        async with self.session_factory() as session:
+        async with self.session_maker() as session:
             try:
                 yield session
             except Exception:

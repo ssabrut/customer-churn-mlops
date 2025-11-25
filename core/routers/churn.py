@@ -2,13 +2,14 @@ import time
 from typing import Any, Dict, List
 
 import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from feast import FeatureStore
 from numpy import ndarray
 from sklearn.pipeline import Pipeline
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from loguru import logger
 
 from core.schemas import ChurnResponse
 from core.services.postgres import factory
@@ -30,12 +31,36 @@ FEAST_REQUEST_FEATURES: List[str] = [
     f"customer_features:{name}" for name in FEATURE_ORDER
 ]
 
+async def log_prediction_background(db_session_factory, log_entry: dict):
+    async with db_session_factory() as db:
+        try:
+            log_sql = text(
+                """
+                INSERT INTO prediction_logs (
+                    model_version, customer_id, age, support_calls, payment_delay,
+                    total_spend, last_interaction, gender, age_group, interaction_frequency,
+                    prediction, probability, ground_truth, response_time_ms
+                )
+                VALUES (
+                    :model_version, :customer_id, :age, :support_calls, :payment_delay,
+                    :total_spend, :last_interaction, :gender, :age_group, :interaction_frequency,
+                    :prediction, :probability, :ground_truth, :response_time_ms
+                )
+            """
+            )
+            
+            await db.execute(log_sql, log_entry)
+            await db.commit()
+        except Exception as e:
+            # Log to file/stderr so you don't lose visibility of DB errors
+            logger.error(f"Failed to log prediction: {e}")
+
 
 @router.get("/predict/{customer_id}", response_model=ChurnResponse)
 async def predict_customer_churn(
     customer_id: int,
     request: Request,
-    db: AsyncSession = Depends(factory.make_postgres_service().get_session),
+    background_tasks: BackgroundTasks
 ) -> ChurnResponse:
     """
     Performs a churn prediction for a given customer ID.
@@ -110,48 +135,25 @@ async def predict_customer_churn(
     end_time: float = time.perf_counter()
     response_time_ms: int = int((end_time - start_time) * 1000)
 
-    try:
-        log_entry: Dict[str, Any] = {
-            "model_version": str(model_version),
-            "customer_id": customer_id,
-            "age": feature_data.get("Age"),
-            "support_calls": feature_data.get("Support Calls"),
-            "payment_delay": feature_data.get("Payment Delay"),
-            "total_spend": feature_data.get("Total Spend"),
-            "last_interaction": feature_data.get("Last Interaction"),
-            "gender": feature_data.get("Male"),
-            "age_group": feature_data.get("Age_Group"),
-            "interaction_frequency": feature_data.get("Interaction_Frequency"),
-            "prediction": int(yhat[0]),
-            "probability": float(probability),
-            "ground_truth": feature_data.get("Churn"),
-            "response_time_ms": response_time_ms,
-        }
+    log_entry: Dict[str, Any] = {
+        "model_version": str(model_version),
+        "customer_id": customer_id,
+        "age": feature_data.get("Age"),
+        "support_calls": feature_data.get("Support Calls"),
+        "payment_delay": feature_data.get("Payment Delay"),
+        "total_spend": feature_data.get("Total Spend"),
+        "last_interaction": feature_data.get("Last Interaction"),
+        "gender": feature_data.get("Male"),
+        "age_group": feature_data.get("Age_Group"),
+        "interaction_frequency": feature_data.get("Interaction_Frequency"),
+        "prediction": int(yhat[0]),
+        "probability": float(probability),
+        "ground_truth": feature_data.get("Churn"),
+        "response_time_ms": response_time_ms,
+    }
 
-        # Use sqlalchemy 'text' for safe parameter binding
-        log_sql = text(
-            """
-            INSERT INTO prediction_logs (
-                model_version, customer_id, age, support_calls, payment_delay,
-                total_spend, last_interaction, gender, age_group, interaction_frequency,
-                prediction, probability, ground_truth, response_time_ms
-            )
-            VALUES (
-                :model_version, :customer_id, :age, :support_calls, :payment_delay,
-                :total_spend, :last_interaction, :gender, :age_group, :interaction_frequency,
-                :prediction, :probability, :ground_truth, :response_time_ms
-            )
-        """
-        )
-
-        await db.execute(log_sql, log_entry)
-        await db.commit()
-
-    except (SQLAlchemyError, Exception):
-        # Per instructions, logging is forbidden.
-        # Rollback the transaction and pass silently.
-        # Failing to log should not fail the prediction request.
-        await db.rollback()
+    postgres_factory = factory.make_postgres_service()
+    background_tasks.add_task(log_prediction_background, postgres_factory.session_maker, log_entry)
 
     return ChurnResponse(
         prediction=int(yhat[0]),
