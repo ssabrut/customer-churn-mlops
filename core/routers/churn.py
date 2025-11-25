@@ -2,34 +2,17 @@ import time
 from typing import Any, Dict, List
 
 import pandas as pd
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from feast import FeatureStore
 from loguru import logger
 from numpy import ndarray
 from sklearn.pipeline import Pipeline
 from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.schemas import ChurnResponse
 from core.services.postgres import factory
 
 router = APIRouter()
-
-FEATURE_ORDER: List[str] = [
-    "Age",
-    "Support Calls",
-    "Payment Delay",
-    "Total Spend",
-    "Last Interaction",
-    "Male",
-    "Age_Group",
-    "Interaction_Frequency",
-]
-
-FEAST_REQUEST_FEATURES: List[str] = [
-    f"customer_features:{name}" for name in FEATURE_ORDER
-]
 
 
 async def log_prediction_background(db_session_factory, log_entry: dict):
@@ -106,6 +89,11 @@ async def predict_customer_churn(
             status_code=503,
             detail="Model or Feast Store not initialized. Check server logs.",
         )
+
+    FEATURE_ORDER: List[str] = pipeline.feature_names_in_.tolist()
+    FEAST_REQUEST_FEATURES: List[str] = [
+        f"customer_features:{name}" for name in FEATURE_ORDER
+    ]
 
     try:
         online_features: Dict[str, Any] = feast_store.get_online_features(

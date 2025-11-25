@@ -30,4 +30,5 @@ dependencies = [
     "asyncpg>=0.30.0",
     "gradio>=5.23.1",
     "psycopg2-binary>=2.9.11",
+    "prometheus-fastapi-instrumentator>=7.1.0",
 ]
