@@ -19,7 +19,7 @@ router = APIRouter()
     summary="Health check",
     description="Check the health and status of the API service and its dependencies.",
     response_description="Service health information",
-    tags=["Health"],
+    tags=["health"],
 )
 async def health_check(
     settings: Settings = Depends(SettingsDependencies),

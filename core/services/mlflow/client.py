@@ -54,7 +54,7 @@ class MLflowClient:
         try:
             self._configure_client()
             self._client = mlflow.tracking.MlflowClient(
-                tracking_uri=self.base_url, registry_uri=self.s3_endpoint_url
+                tracking_uri=self.base_url, registry_uri=self.base_url
             )
         except (MlflowException, Exception) as e:
             raise RuntimeError(f"Failed to initialize MLflowClient: {e}") from e

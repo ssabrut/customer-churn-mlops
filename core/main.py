@@ -29,22 +29,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.settings = settings
 
     mlflow_client: MLflowClient = make_mlflow_service()
-    logger.info("Polling for 'Production' model version...")
-    production_version = "N/A"
 
-    logger.success(
-        f"Found 'Production' model version: {production_version}. Loading..."
-    )
     try:
-        model, version = mlflow_client.load_model("XGBoostChurnModel", version=1)
+        latest_model = mlflow_client.client.get_latest_versions("XGBoostChurnModel")
 
-        app.state.model = model
-        app.state.model_version = 1
-        logger.success(f"Successfully loaded model version '{version}'.")
+        if not latest_model:
+            logger.warning("No Production model found. Falling back to Staging or None.")
+            app.state.model = None
+        else:
+            prod_version = latest_model[0].version
+            logger.info(f"Loading Production model version: {prod_version}")
+            
+            model, version = mlflow_client.load_model("XGBoostChurnModel", version=prod_version)
+            
+            app.state.model = model
+            app.state.model_version = version
+            logger.success(f"Successfully loaded model version '{version}'.")
     except Exception as e:
-        logger.critical(f"Failed to load model version {production_version}: {e}")
-        app.state.model = None
-        app.state.model_version = "N/A (Load Failed)"
+        logger.critical(f"Failed to load model: {e}")
 
     try:
         from feast import FeatureStore
@@ -82,9 +84,9 @@ def root():
     return {"status": 200, "message": "ok"}
 
 
-app.include_router(churn_router, tags=["prediction"])
-app.include_router(health_router, tags=["health"])
-app.include_router(data_router, tags=["data"])
+app.include_router(churn_router)
+app.include_router(health_router)
+app.include_router(data_router)
 
 if __name__ == "__main__":
     import uvicorn
