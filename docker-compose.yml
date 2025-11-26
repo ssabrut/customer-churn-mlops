@@ -284,8 +284,8 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./docker/data/prometheus:/prometheus
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./data/prometheus:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
     networks:
@@ -304,7 +304,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ./docker/data/grafana:/var/lib/grafana
+      - ./data/grafana:/var/lib/grafana
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
       - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
       - ./grafana/dashboards:/var/lib/grafana/dashboards
