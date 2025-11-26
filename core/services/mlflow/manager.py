@@ -19,38 +19,50 @@ class ModelManager:
         
         self.lock = asyncio.Lock() # Prevent reading while writing
 
-    async def load_latest_model(self):
+    async def _load_specific_model(self, stage: str, is_shadow: bool):
         try:
-            latest_models = self.client.client.get_latest_versions(name=MODEL_NAME, stages=["Production"])
+            version = self.client.get_model_version(MODEL_NAME, stage)
 
-            if not latest_models:
-                logger.warning("No production model found.")
+            if not version:
+                if not is_shadow:
+                    logger.warning(f"No model found in {stage}")
                 return
 
-            new_version = latest_models[0].version
+            current_version = self.shadow_version if is_shadow else self.version
 
-            if new_version == self.version:
+            if version == current_version:
                 return
 
-            logger.info(f"New production model detected (v{new_version}). Loading...")
+            logger.info(f"Loading new {stage} model (v{version})...")
 
             loop = asyncio.get_running_loop()
-            new_model, _ = await loop.run_in_executor(
+            model, _ = await loop.run_in_executor(
                 None,
                 self.client.load_model,
                 MODEL_NAME,
-                new_version
+                version
             )
 
-            # Hot swap model safely
             async with self.lock:
-                self.model = new_model
-                self.version = new_version
+                if is_shadow:
+                    self.shadow_model = model
+                    self.shadow_version = version
+                else:
+                    self.model = model
+                    self.version = version
 
-            logger.success(f"Successfully hot-swapped to model v{new_version}")
+            logger.success(f"Loaded {stage} model v{version} (Shadow={is_shadow})")
         except Exception as e:
-            logger.error(f"Error during model reload: {e}")
+            logger.error(f"Failed to load {stage} model: {e}")
 
-    async def get_model(self) -> Tuple[Any, str]:
+    async def get_production_model(self) -> Tuple[Any, str]:
         async with self.lock:
             return self.model, self.version
+
+    async def get_shadow_model(self) -> Tuple[Optional[Any], str]:
+        async with self.lock:
+            return self.shadow_model, self.shadow_version
+
+    async def load_models(self):
+        await self._load_specific_model("Production", is_shadow=False)
+        await self._load_specific_model("Staging", is_shadow=True)

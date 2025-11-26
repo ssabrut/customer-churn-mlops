@@ -33,39 +33,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     mlflow_client: MLflowClient = make_mlflow_service()
     model_manager = ModelManager(mlflow_client)
 
-    await model_manager.load_latest_model()
-
+    await model_manager.load_models()
     app.state.model_manager = model_manager
 
-    async def poll_for_updates():
+    async def poll_models():
         while True:
             await asyncio.sleep(60)
-            await model_manager.load_latest_model()
+            await model_manager.load_models()
 
-    poller_task = asyncio.create_task(poll_for_updates())
-    logger.info("Started background model poller")
-
-    # try:
-    #     latest_model = mlflow_client.client.get_latest_versions("XGBoostChurnModel")
-
-    #     if not latest_model:
-    #         logger.warning(
-    #             "No Production model found. Falling back to Staging or None."
-    #         )
-    #         app.state.model = None
-    #     else:
-    #         prod_version = latest_model[0].version
-    #         logger.info(f"Loading Production model version: {prod_version}")
-
-    #         model, version = mlflow_client.load_model(
-    #             "XGBoostChurnModel", version=prod_version
-    #         )
-
-    #         app.state.model = model
-    #         app.state.model_version = version
-    #         logger.success(f"Successfully loaded model version '{version}'.")
-    # except Exception as e:
-    #     logger.critical(f"Failed to load model: {e}")
+    poller_task = asyncio.create_task(poll_models())
+    logger.info("Started model poller (Production & Shadows)")
 
     try:
         from feast import FeatureStore

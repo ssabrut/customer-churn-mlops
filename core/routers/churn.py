@@ -7,35 +7,33 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from feast import FeatureStore
 from loguru import logger
 from numpy import ndarray
-from sklearn.pipeline import Pipeline
 from sqlalchemy import text
 
 from core.schemas import ChurnResponse
 from core.services.postgres import factory
 from core.schemas.validation import InputFeatures
+from core.services.mlflow import ModelManager
 
 router = APIRouter()
+
+LOG_SQL = text("""
+    INSERT INTO prediction_logs (
+        model_version, customer_id, age, support_calls, payment_delay,
+        total_spend, last_interaction, gender, age_group, interaction_frequency,
+        prediction, probability, ground_truth, response_time_ms, is_shadow
+    )
+    VALUES (
+        :model_version, :customer_id, :age, :support_calls, :payment_delay,
+        :total_spend, :last_interaction, :gender, :age_group, :interaction_frequency,
+        :prediction, :probability, :ground_truth, :response_time_ms, :is_shadow
+    )
+""")
 
 
 async def log_prediction_background(db_session_factory, log_entry: dict):
     async with db_session_factory() as db:
         try:
-            log_sql = text(
-                """
-                INSERT INTO prediction_logs (
-                    model_version, customer_id, age, support_calls, payment_delay,
-                    total_spend, last_interaction, gender, age_group, interaction_frequency,
-                    prediction, probability, ground_truth, response_time_ms
-                )
-                VALUES (
-                    :model_version, :customer_id, :age, :support_calls, :payment_delay,
-                    :total_spend, :last_interaction, :gender, :age_group, :interaction_frequency,
-                    :prediction, :probability, :ground_truth, :response_time_ms
-                )
-            """
-            )
-
-            await db.execute(log_sql, log_entry)
+            await db.execute(LOG_SQL, log_entry)
             await db.commit()
         except Exception as e:
             # Log to file/stderr so you don't lose visibility of DB errors
@@ -78,7 +76,8 @@ async def predict_customer_churn(
     try:
         model_manager = request.app.state.model_manager
         feast_store: FeatureStore = request.app.state.feast_store
-        pipeline, model_version = await model_manager.get_model()
+        pipeline, model_version = await model_manager.get_production_model()
+        shadow_pipeline, shadow_version = await model_manager.get_shadow_model()
     except AttributeError as e:
         # Catch if .model, .feast_store, etc. don't exist at all
         raise HTTPException(
@@ -150,12 +149,42 @@ async def predict_customer_churn(
         "probability": float(probability),
         "ground_truth": feature_data.get("Churn"),
         "response_time_ms": response_time_ms,
+        "is_shadow": False
     }
 
     postgres_factory = factory.make_postgres_service()
     background_tasks.add_task(
         log_prediction_background, postgres_factory.session_maker, log_entry
     )
+
+    try:
+        yhat_proba = shadow_pipeline.predict_proba(input_df)
+        shadow_probability = float(yhat_proba[0][1])
+        shadow_prediction = int(shadow_probability > 0.5)
+
+        shadow_entry = {
+            "model_version": shadow_version,
+            "customer_id": customer_id,
+            "age": feature_data.get("Age"),
+            "support_calls": feature_data.get("Support Calls"),
+            "payment_delay": feature_data.get("Payment Delay"),
+            "total_spend": feature_data.get("Total Spend"),
+            "last_interaction": feature_data.get("Last Interaction"),
+            "gender": feature_data.get("Male"),
+            "age_group": feature_data.get("Age_Group"),
+            "interaction_frequency": feature_data.get("Interaction_Frequency"),
+            "prediction": shadow_prediction,
+            "probability": shadow_probability,
+            "ground_truth": feature_data.get("Churn"),
+            "response_time_ms": 0, 
+            "is_shadow": True
+        }
+        
+        background_tasks.add_task(
+            log_prediction_background, postgres_factory.session_maker, shadow_entry
+        )
+    except Exception as e:
+        logger.warning(f"Shadow prediction error: {e}")
 
     return ChurnResponse(
         prediction=int(yhat[0]),
