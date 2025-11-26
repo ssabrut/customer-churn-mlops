@@ -402,6 +402,7 @@ mypy-extensions==1.1.0
     # via
     #   black
     #   mypy
+    #   typing-inspect
 natsort==8.4.0
     # via apache-airflow
 numpy==1.26.4
@@ -473,6 +474,7 @@ packaging==25.0
     #   matplotlib
     #   mlflow-skinny
     #   mlflow-tracing
+    #   pandera
 pandas==2.3.3
     # via
     #   customer-churn-mlops (pyproject.toml)
@@ -481,6 +483,8 @@ pandas==2.3.3
     #   gradio
     #   mlflow
     #   seaborn
+pandera==0.27.0
+    # via customer-churn-mlops (pyproject.toml)
 parso==0.8.5
     # via jedi
 partd==1.4.2
@@ -563,6 +567,7 @@ pydantic==2.12.4
     #   gradio
     #   mlflow-skinny
     #   mlflow-tracing
+    #   pandera
     #   pydantic-settings
     #   retryhttp
 pydantic-core==2.41.5
@@ -780,7 +785,9 @@ traitlets==5.14.3
     #   ipython
     #   matplotlib-inline
 typeguard==4.4.4
-    # via feast
+    # via
+    #   feast
+    #   pandera
 typer==0.20.0
     # via
     #   fastapi-cli
@@ -819,6 +826,7 @@ typing-extensions==4.15.0
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
+    #   pandera
     #   pydantic
     #   pydantic-core
     #   referencing
@@ -829,8 +837,11 @@ typing-extensions==4.15.0
     #   typeguard
     #   typer
     #   typer-slim
+    #   typing-inspect
     #   typing-inspection
     #   uvicorn
+typing-inspect==0.9.0
+    # via pandera
 typing-inspection==0.4.2
     # via
     #   cadwyn

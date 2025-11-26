@@ -2,6 +2,7 @@ import time
 from typing import Any, Dict, List
 
 import pandas as pd
+import pandera as pa
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from feast import FeatureStore
 from loguru import logger
@@ -11,7 +12,7 @@ from sqlalchemy import text
 
 from core.schemas import ChurnResponse
 from core.services.postgres import factory
-from core.services.mlflow import ModelManager
+from core.schemas.validation import InputFeatures
 
 router = APIRouter()
 
@@ -113,9 +114,20 @@ async def predict_customer_churn(
     }
 
     input_df: pd.DataFrame = pd.DataFrame([feature_data], columns=FEATURE_ORDER)
+
+    # Validation block
     try:
-        yhat: ndarray = pipeline.predict(input_df)
-        yhat_proba: ndarray = pipeline.predict_proba(input_df)
+        validated_df = InputFeatures.validate(input_df)
+    except pa.errors.SchemaError as e:
+        logger.error(f"Data Validation Failed: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid feature data: {e.failure_cases}"
+        )
+    
+    try:
+        yhat: ndarray = pipeline.predict(validated_df)
+        yhat_proba: ndarray = pipeline.predict_proba(validated_df)
         probability: float = float(yhat_proba[0][1])
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Prediction error: {e}")

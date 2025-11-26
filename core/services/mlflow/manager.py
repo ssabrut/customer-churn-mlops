@@ -1,6 +1,6 @@
 import asyncio
 from loguru import logger
-from typing import Any, Tuple
+from typing import Any, Tuple, Optional
 
 from core.services.mlflow import MLflowClient
 from core.constant import MODEL_NAME
@@ -8,13 +8,20 @@ from core.constant import MODEL_NAME
 class ModelManager:
     def __init__(self, mlflow_client: MLflowClient):
         self.client = mlflow_client
+
+        # Prod model state
         self.model = None
         self.version = "N/A"
+
+        # Shadow model state
+        self.shadow_model = None
+        self.shadow_version = "N/A"
+        
         self.lock = asyncio.Lock() # Prevent reading while writing
 
     async def load_latest_model(self):
         try:
-            latest_models = self.client.client.get_latest_versions(name=MODEL_NAME)
+            latest_models = self.client.client.get_latest_versions(name=MODEL_NAME, stages=["Production"])
 
             if not latest_models:
                 logger.warning("No production model found.")

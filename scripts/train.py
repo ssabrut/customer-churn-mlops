@@ -16,6 +16,7 @@ from feast import FeatureStore
 from loguru import logger
 from mlflow.entities import Experiment
 from mlflow.exceptions import MlflowException
+from mlflow.tracking import MlflowClient
 from pandas import DataFrame, Index, Series
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sklearn.model_selection import train_test_split
@@ -76,6 +77,7 @@ def main() -> None:
     logger.info(f"Setting S3 uri to: {MLFLOW_S3_ENDPOINT_URL}")
     try:
         mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+        client = MlflowClient(tracking_uri=MLFLOW_TRACKING_URI, registry_uri=MLFLOW_TRACKING_URI)
         experiment: Experiment | None = mlflow.get_experiment_by_name(EXPERIMENT_NAME)
         if experiment is None:
             logger.info(f"Creating new MLflow experiment: {EXPERIMENT_NAME}")
@@ -211,6 +213,21 @@ def main() -> None:
                 registered_model_name=MODEL_NAME,
                 input_example=X_train.iloc[:10],
             )
+
+            latest_versions = client.get_latest_versions(MODEL_NAME, stages=["None"])
+            if latest_versions:
+                new_versions = latest_versions[0].version
+                logger.info(f"Transitioning version {new_versions} to 'Staging'...")
+                client.transition_model_version_stage(
+                    name=MODEL_NAME,
+                    version=new_versions,
+                    stage="Staging",
+                    archive_existing_versions=False
+                )
+
+                logger.success(f"Model version {new_versions} moved to 'Staging'")
+            else:
+                logger.warning("Could not find the newly created model version to transition")
 
             logger.info(f"Run ID: {run.info.run_id}")
             logger.success("Training complete.")

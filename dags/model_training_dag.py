@@ -118,5 +118,17 @@ with DAG(
         tty=True,
     )
 
+    task_promote_model = DockerOperator(
+        task_id="promote_model",
+        image="churn-mlops-image:latest",
+        command="python scripts/promote_model.py",
+        network_mode="customer-churn-mlops_internal",
+        environment=mlflow_env_vars,
+        docker_url="unix://var/run/docker.sock",
+        auto_remove=True,
+        mount_tmp_dir=False,
+        tty=True,
+    )
+
     # Define task dependencies
-    task_preprocess_data >> task_feast_materialize >> task_train_model
+    task_preprocess_data >> task_feast_materialize >> task_train_model >> task_promote_model

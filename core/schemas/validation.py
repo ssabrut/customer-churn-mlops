@@ -1,7 +1,7 @@
 import pandera as pa
-from pandera.typing import DataFrame, Series
+from pandera.typing import Series
 
-class InputFeatures(pa.SchemaModel):
+class InputFeatures(pa.DataFrameModel):
     Age: Series[int] = pa.Field(ge=18, le=120, description="Customer age")
     Support_Calls: Series[int] = pa.Field(ge=0, alias="Support Calls", description="Number of support calls")
     Payment_Delay: Series[int] = pa.Field(ge=0, alias="Payment Delay", description="Days delayed")
