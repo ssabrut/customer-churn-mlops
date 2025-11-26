@@ -56,10 +56,11 @@ COPY . .
 # Change ownership of the app directory to the non-root user
 RUN chown -R appuser:appgroup /app
 
+RUN chmod +x ./entrypoint/gradio.sh
+
 # Switch to non-root user
 USER appuser
 
 EXPOSE 7860
 
-# CMD using the venv python
-CMD ["python", "entrypoint/gradio_app.py"]
+ENTRYPOINT [ "./entrypoint/gradio.sh" ]

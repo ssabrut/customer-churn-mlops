@@ -258,13 +258,14 @@ services:
         condition: service_healthy
       mlflow:
         condition: service_started
+    command: >
+      sh -c "echo 'Starting FastAPI Server...'; sleep 5; uvicorn core.main:app --host 0.0.0.0 --port 8000"
 
   gradio_server:
     build:
       context: .
       dockerfile: docker/gradio.Dockerfile
     container_name: gradio_server
-    command: python entrypoint/gradio_app.py
     restart: unless-stopped
     ports:
       - "7860:7860"
