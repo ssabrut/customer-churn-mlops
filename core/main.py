@@ -1,3 +1,4 @@
+import asyncio
 import sys
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
@@ -12,7 +13,7 @@ from core.config import load_config
 from core.routers.churn import router as churn_router
 from core.routers.data import router as data_router
 from core.routers.health import router as health_router
-from core.services.mlflow import MLflowClient
+from core.services.mlflow import MLflowClient, ModelManager
 from core.services.mlflow.factory import make_mlflow_service
 
 try:
@@ -30,28 +31,41 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.settings = settings
 
     mlflow_client: MLflowClient = make_mlflow_service()
+    model_manager = ModelManager(mlflow_client)
 
-    try:
-        latest_model = mlflow_client.client.get_latest_versions("XGBoostChurnModel")
+    await model_manager.load_latest_model()
 
-        if not latest_model:
-            logger.warning(
-                "No Production model found. Falling back to Staging or None."
-            )
-            app.state.model = None
-        else:
-            prod_version = latest_model[0].version
-            logger.info(f"Loading Production model version: {prod_version}")
+    app.state.model_manager = model_manager
 
-            model, version = mlflow_client.load_model(
-                "XGBoostChurnModel", version=prod_version
-            )
+    async def poll_for_updates():
+        while True:
+            await asyncio.sleep(60)
+            await model_manager.load_latest_model()
 
-            app.state.model = model
-            app.state.model_version = version
-            logger.success(f"Successfully loaded model version '{version}'.")
-    except Exception as e:
-        logger.critical(f"Failed to load model: {e}")
+    poller_task = asyncio.create_task(poll_for_updates())
+    logger.info("Started background model poller")
+
+    # try:
+    #     latest_model = mlflow_client.client.get_latest_versions("XGBoostChurnModel")
+
+    #     if not latest_model:
+    #         logger.warning(
+    #             "No Production model found. Falling back to Staging or None."
+    #         )
+    #         app.state.model = None
+    #     else:
+    #         prod_version = latest_model[0].version
+    #         logger.info(f"Loading Production model version: {prod_version}")
+
+    #         model, version = mlflow_client.load_model(
+    #             "XGBoostChurnModel", version=prod_version
+    #         )
+
+    #         app.state.model = model
+    #         app.state.model_version = version
+    #         logger.success(f"Successfully loaded model version '{version}'.")
+    # except Exception as e:
+    #     logger.critical(f"Failed to load model: {e}")
 
     try:
         from feast import FeatureStore
@@ -63,6 +77,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.error(f"Feast Store initialization failed: {e}")
 
     yield
+
+    poller_task.cancel()
+    try:
+        await poller_task
+    except asyncio.CancelledError:
+        logger.info("Background poller stopped")
 
 
 app = FastAPI(

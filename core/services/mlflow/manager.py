@@ -10,7 +10,7 @@ class ModelManager:
         self.client = mlflow_client
         self.model = None
         self.version = "N/A"
-        self.lock = asyncio.locks() # Prevent reading while writing
+        self.lock = asyncio.Lock() # Prevent reading while writing
 
     async def load_latest_model(self):
         try:

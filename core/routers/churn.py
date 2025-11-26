@@ -11,6 +11,7 @@ from sqlalchemy import text
 
 from core.schemas import ChurnResponse
 from core.services.postgres import factory
+from core.services.mlflow import ModelManager
 
 router = APIRouter()
 
@@ -74,9 +75,9 @@ async def predict_customer_churn(
     start_time: float = time.perf_counter()
 
     try:
-        pipeline: Pipeline = request.app.state.model
+        model_manager = request.app.state.model_manager
         feast_store: FeatureStore = request.app.state.feast_store
-        model_version: Any = request.app.state.model_version
+        pipeline, model_version = await model_manager.get_model()
     except AttributeError as e:
         # Catch if .model, .feast_store, etc. don't exist at all
         raise HTTPException(
