@@ -507,7 +507,11 @@ platformdirs==4.5.0
 pluggy==1.6.0
     # via apache-airflow-core
 prometheus-client==0.23.1
-    # via feast
+    # via
+    #   feast
+    #   prometheus-fastapi-instrumentator
+prometheus-fastapi-instrumentator==7.1.0
+    # via customer-churn-mlops (pyproject.toml)
 prompt-toolkit==3.0.52
     # via ipython
 propcache==0.4.1
@@ -729,6 +733,7 @@ starlette==0.49.3
     #   cadwyn
     #   fastapi
     #   gradio
+    #   prometheus-fastapi-instrumentator
 structlog==25.5.0
     # via
     #   apache-airflow-core
