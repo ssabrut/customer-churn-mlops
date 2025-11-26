@@ -32,4 +32,5 @@ dependencies = [
     "psycopg2-binary>=2.9.11",
     "prometheus-fastapi-instrumentator>=7.1.0",
     "pandera>=0.27.0",
+    "evidently>=0.7.17",
 ]

@@ -50,6 +50,16 @@ CREATE TABLE model_performance (
 );
 """
 
+CREATE_DRIFT_TABLE_QUERY = """
+CREATE TABLE IF NOT EXISTS drift_metrics (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    metric_name VARCHAR(255),
+    feature_name VARCHAR(255),
+    metric_value FLOAT
+);
+"""
+
 try:
     config: Any = load_config()
 except EnvironmentError as e:
@@ -112,9 +122,14 @@ def main(retries: int = 5, delay: int = 5) -> None:
             # Test connection and create tables
             with engine.connect() as conn:
                 logger.success("Database connection successful.")
-                logger.info("Creating tables (if not exists)...")
+                logger.info("Creating tables `prediction_logs`...")
                 conn.execute(text(CREATE_PREDICTION_LOGS_TABLE))
+
+                logger.info("Creating tables `model_performance`...")
                 conn.execute(text(CREATE_MODEL_PERFORMANCE_TABLE))
+
+                logger.info("Creating tables `drift_metrics`...")
+                conn.execute(text(CREATE_DRIFT_TABLE_QUERY))
                 conn.commit()
 
             # Write data to SQL

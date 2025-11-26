@@ -28,6 +28,7 @@ anyio==4.11.0
     # via
     #   gradio
     #   httpx
+    #   litestar
     #   starlette
     #   watchfiles
 apache-airflow==3.1.0
@@ -66,6 +67,8 @@ apache-airflow-task-sdk==1.1.0
     # via
     #   apache-airflow
     #   apache-airflow-core
+appdirs==1.4.4
+    # via iterative-telemetry
 argcomplete==3.6.3
     # via apache-airflow-core
 asgiref==3.10.0
@@ -108,6 +111,7 @@ cadwyn==5.6.1
     # via apache-airflow-core
 certifi==2025.10.5
     # via
+    #   evidently
     #   httpcore
     #   httpx
     #   kubernetes
@@ -124,7 +128,10 @@ click==8.3.0
     #   dask
     #   feast
     #   flask
+    #   litestar
     #   mlflow-skinny
+    #   nltk
+    #   rich-click
     #   rich-toolkit
     #   typer
     #   typer-slim
@@ -149,6 +156,7 @@ cryptography==46.0.3
     # via
     #   apache-airflow-core
     #   apache-airflow-providers-cncf-kubernetes
+    #   evidently
     #   mlflow
 cycler==0.12.1
     # via matplotlib
@@ -162,10 +170,14 @@ decorator==5.2.1
     # via ipython
 deprecated==1.3.1
     # via apache-airflow-core
+deprecation==2.1.0
+    # via evidently
 dill==0.3.9
     # via
     #   apache-airflow-core
     #   feast
+distro==1.9.0
+    # via iterative-telemetry
 dnspython==2.8.0
     # via email-validator
 docker==7.1.0
@@ -175,16 +187,23 @@ docker==7.1.0
     #   mlflow
 durationpy==0.10
     # via kubernetes
+dynaconf==3.2.12
+    # via evidently
 email-validator==2.3.0
     # via
     #   fastapi
     #   pydantic
+evidently==0.7.17
+    # via customer-churn-mlops (pyproject.toml)
 exceptiongroup==1.3.0
     # via
     #   anyio
     #   ipython
+    #   litestar
 executing==2.2.1
     # via stack-data
+faker==38.2.0
+    # via polyfactory
 fastapi==0.121.1
     # via
     #   customer-churn-mlops (pyproject.toml)
@@ -202,7 +221,9 @@ feast==0.47.0
 ffmpy==1.0.0
     # via gradio
 filelock==3.20.0
-    # via huggingface-hub
+    # via
+    #   huggingface-hub
+    #   iterative-telemetry
 flask==3.1.2
     # via
     #   flask-cors
@@ -219,6 +240,7 @@ fsspec==2025.10.0
     # via
     #   apache-airflow-task-sdk
     #   dask
+    #   evidently
     #   gradio-client
     #   huggingface-hub
     #   universal-pathlib
@@ -284,6 +306,7 @@ httpx==0.28.1
     #   gradio
     #   gradio-client
     #   huggingface-hub
+    #   litestar
     #   safehttpx
 huey==2.5.4
     # via mlflow
@@ -308,6 +331,8 @@ ipython==8.37.0
     # via black
 isort==7.0.0
     # via customer-churn-mlops (pyproject.toml)
+iterative-telemetry==0.0.10
+    # via evidently
 itsdangerous==2.2.0
     # via
     #   apache-airflow-core
@@ -324,7 +349,9 @@ jinja2==3.1.6
     #   flask
     #   gradio
 joblib==1.5.2
-    # via scikit-learn
+    # via
+    #   nltk
+    #   scikit-learn
 jq==1.10.0
     # via customer-churn-mlops (pyproject.toml)
 jsonschema==4.25.1
@@ -345,6 +372,10 @@ libcst==1.8.6
     # via apache-airflow-core
 linkify-it-py==2.0.3
     # via apache-airflow-core
+litestar==2.18.0
+    # via evidently
+litestar-htmx==0.5.0
+    # via litestar
 locket==1.0.0
     # via partd
 lockfile==0.12.2
@@ -392,10 +423,14 @@ msgspec==0.19.0
     # via
     #   apache-airflow-core
     #   apache-airflow-task-sdk
+    #   litestar
 multidict==6.7.0
     # via
     #   aiohttp
+    #   litestar
     #   yarl
+multipart==1.3.0
+    # via litestar
 mypy==1.18.2
     # via sqlalchemy
 mypy-extensions==1.1.0
@@ -405,19 +440,24 @@ mypy-extensions==1.1.0
     #   typing-inspect
 natsort==8.4.0
     # via apache-airflow
+nltk==3.9.2
+    # via evidently
 numpy==1.26.4
     # via
     #   customer-churn-mlops (pyproject.toml)
     #   contourpy
     #   dask
+    #   evidently
     #   feast
     #   gradio
     #   matplotlib
     #   mlflow
     #   pandas
+    #   patsy
     #   scikit-learn
     #   scipy
     #   seaborn
+    #   statsmodels
     #   xgboost
 oauthlib==3.3.1
     # via
@@ -445,6 +485,7 @@ opentelemetry-exporter-otlp-proto-http==1.38.0
 opentelemetry-proto==1.38.0
     # via
     #   apache-airflow-core
+    #   evidently
     #   mlflow-skinny
     #   mlflow-tracing
     #   opentelemetry-exporter-otlp-proto-common
@@ -467,6 +508,7 @@ packaging==25.0
     #   apache-airflow-core
     #   black
     #   dask
+    #   deprecation
     #   gradio
     #   gradio-client
     #   gunicorn
@@ -475,14 +517,18 @@ packaging==25.0
     #   mlflow-skinny
     #   mlflow-tracing
     #   pandera
+    #   plotly
+    #   statsmodels
 pandas==2.3.3
     # via
     #   customer-churn-mlops (pyproject.toml)
     #   dask
+    #   evidently
     #   feast
     #   gradio
     #   mlflow
     #   seaborn
+    #   statsmodels
 pandera==0.27.0
     # via customer-churn-mlops (pyproject.toml)
 parso==0.8.5
@@ -496,6 +542,8 @@ pathspec==0.12.1
     #   apache-airflow-core
     #   black
     #   mypy
+patsy==1.0.2
+    # via statsmodels
 pendulum==3.1.0
     # via
     #   apache-airflow-core
@@ -508,8 +556,12 @@ pillow==11.3.0
     #   matplotlib
 platformdirs==4.5.0
     # via black
+plotly==5.24.1
+    # via evidently
 pluggy==1.6.0
     # via apache-airflow-core
+polyfactory==3.1.0
+    # via litestar
 prometheus-client==0.23.1
     # via
     #   feast
@@ -547,6 +599,7 @@ pyarrow==18.0.0
     #   dask
     #   feast
     #   mlflow
+    #   pandas
 pyasn1==0.6.1
     # via
     #   pyasn1-modules
@@ -561,6 +614,7 @@ pydantic==2.12.4
     #   apache-airflow-core
     #   apache-airflow-task-sdk
     #   cadwyn
+    #   evidently
     #   fastapi
     #   fastapi-cloud-cli
     #   feast
@@ -626,12 +680,14 @@ pytz==2025.2
 pyyaml==6.0.3
     # via
     #   dask
+    #   evidently
     #   feast
     #   gradio
     #   huggingface-hub
     #   kubernetes
     #   kubernetes-asyncio
     #   libcst
+    #   litestar
     #   mlflow-skinny
     #   uvicorn
 redis==4.6.0
@@ -642,13 +698,17 @@ referencing==0.37.0
     # via
     #   jsonschema
     #   jsonschema-specifications
+regex==2025.11.3
+    # via nltk
 requests==2.32.5
     # via
     #   apache-airflow-core
     #   apache-airflow-task-sdk
     #   databricks-sdk
     #   docker
+    #   evidently
     #   feast
+    #   iterative-telemetry
     #   kubernetes
     #   mlflow-skinny
     #   opentelemetry-exporter-otlp-proto-http
@@ -660,11 +720,16 @@ retryhttp==1.4.0
 rich==14.2.0
     # via
     #   apache-airflow-core
+    #   evidently
+    #   litestar
     #   rich-argparse
+    #   rich-click
     #   rich-toolkit
     #   typer
 rich-argparse==1.7.2
     # via apache-airflow-core
+rich-click==1.9.4
+    # via litestar
 rich-toolkit==0.15.1
     # via
     #   fastapi-cli
@@ -684,11 +749,14 @@ safehttpx==0.1.7
 scikit-learn==1.7.2
     # via
     #   customer-churn-mlops (pyproject.toml)
+    #   evidently
     #   mlflow
 scipy==1.15.3
     # via
+    #   evidently
     #   mlflow
     #   scikit-learn
+    #   statsmodels
     #   xgboost
 seaborn==0.13.2
     # via customer-churn-mlops (pyproject.toml)
@@ -739,6 +807,8 @@ starlette==0.49.3
     #   fastapi
     #   gradio
     #   prometheus-fastapi-instrumentator
+statsmodels==0.14.5
+    # via evidently
 structlog==25.5.0
     # via
     #   apache-airflow-core
@@ -754,6 +824,7 @@ tenacity==8.5.0
     #   apache-airflow-core
     #   apache-airflow-task-sdk
     #   feast
+    #   plotly
     #   retryhttp
 termcolor==3.2.0
     # via apache-airflow-core
@@ -780,6 +851,7 @@ tqdm==4.67.1
     # via
     #   feast
     #   huggingface-hub
+    #   nltk
 traitlets==5.14.3
     # via
     #   ipython
@@ -790,6 +862,7 @@ typeguard==4.4.4
     #   pandera
 typer==0.20.0
     # via
+    #   evidently
     #   fastapi-cli
     #   fastapi-cloud-cli
     #   gradio
@@ -818,6 +891,7 @@ typing-extensions==4.15.0
     #   grpcio
     #   huggingface-hub
     #   ipython
+    #   litestar
     #   mlflow-skinny
     #   multidict
     #   mypy
@@ -827,9 +901,11 @@ typing-extensions==4.15.0
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
     #   pandera
+    #   polyfactory
     #   pydantic
     #   pydantic-core
     #   referencing
+    #   rich-click
     #   rich-toolkit
     #   sqlalchemy
     #   starlette
@@ -841,7 +917,9 @@ typing-extensions==4.15.0
     #   typing-inspection
     #   uvicorn
 typing-inspect==0.9.0
-    # via pandera
+    # via
+    #   evidently
+    #   pandera
 typing-inspection==0.4.2
     # via
     #   cadwyn
@@ -849,24 +927,31 @@ typing-inspection==0.4.2
     #   pydantic-settings
 tzdata==2025.2
     # via
+    #   faker
     #   pandas
     #   pendulum
 uc-micro-py==1.0.3
     # via linkify-it-py
+ujson==5.11.0
+    # via evidently
 universal-pathlib==0.3.5
     # via apache-airflow-core
 urllib3==2.5.0
     # via
     #   docker
+    #   evidently
     #   kubernetes
     #   kubernetes-asyncio
     #   requests
     #   sentry-sdk
     #   types-requests
 uuid6==2025.0.1
-    # via apache-airflow-core
+    # via
+    #   apache-airflow-core
+    #   evidently
 uvicorn==0.38.0
     # via
+    #   evidently
     #   fastapi
     #   fastapi-cli
     #   fastapi-cloud-cli
@@ -878,6 +963,8 @@ uvicorn-worker==0.4.0
     # via feast
 uvloop==0.22.1
     # via uvicorn
+watchdog==6.0.0
+    # via evidently
 watchfiles==1.1.1
     # via uvicorn
 wcwidth==0.2.14
