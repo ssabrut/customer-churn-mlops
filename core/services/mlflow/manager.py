@@ -1,9 +1,11 @@
 import asyncio
-from loguru import logger
-from typing import Any, Tuple, Optional
+from typing import Any, Optional, Tuple
 
-from core.services.mlflow import MLflowClient
+from loguru import logger
+
 from core.constant import MODEL_NAME
+from core.services.mlflow import MLflowClient
+
 
 class ModelManager:
     def __init__(self, mlflow_client: MLflowClient):
@@ -16,8 +18,8 @@ class ModelManager:
         # Shadow model state
         self.shadow_model = None
         self.shadow_version = "N/A"
-        
-        self.lock = asyncio.Lock() # Prevent reading while writing
+
+        self.lock = asyncio.Lock()  # Prevent reading while writing
 
     async def _load_specific_model(self, stage: str, is_shadow: bool):
         try:
@@ -37,10 +39,7 @@ class ModelManager:
 
             loop = asyncio.get_running_loop()
             model, _ = await loop.run_in_executor(
-                None,
-                self.client.load_model,
-                MODEL_NAME,
-                version
+                None, self.client.load_model, MODEL_NAME, version
             )
 
             async with self.lock:

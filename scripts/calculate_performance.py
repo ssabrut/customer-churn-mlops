@@ -13,11 +13,10 @@ from datetime import datetime, timedelta
 import mlflow
 import pandas as pd
 from loguru import logger
-from sqlalchemy import text
 from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -94,11 +93,13 @@ def main(args: argparse.Namespace) -> None:
         raise
 
     # Use parameterized query to prevent SQL injection
-    sql = text("""
+    sql = text(
+        """
         SELECT prediction, actual_churn
         FROM model_performance
         WHERE process_date > :process_date
-    """)
+    """
+    )
     try:
         df: pd.DataFrame = pd.read_sql(
             sql, engine, params={"process_date": process_date}

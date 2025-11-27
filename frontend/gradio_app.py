@@ -1,23 +1,21 @@
 import os
 import sys
-
-# Ensures the project root is in the Python path for core imports
-script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(script_dir)
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-import json
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import gradio as gr
 import httpx
 import pandas as pd
 from loguru import logger
 
+# Ensure project root is in sys.path
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from core.config import load_config
 
-# Define the order of features to display
+# Constants
 FEATURE_ORDER: List[str] = [
     "Age",
     "Support Calls",
@@ -28,253 +26,213 @@ FEATURE_ORDER: List[str] = [
     "Age_Group",
     "Interaction_Frequency",
 ]
+TIMEOUT_SECONDS: float = 10.0
 
 
 def predict_churn(
-    customer_id: Optional[float],
-) -> Tuple[str, float, str, Optional[pd.DataFrame], Any]:
+    customer_id: float,
+) -> Tuple[str, float, str, Optional[pd.DataFrame], Dict[str, Any]]:
     """
-    Calls the FastAPI service to get a churn prediction and the features used.
-
-    The function handles input validation, API connection errors, HTTP status
-    errors, and response parsing errors (JSON, KeyError). All errors are
-    caught and returned as a valid tuple for the Gradio UI.
+    Orchestrates the prediction flow: validates input, queries the API,
+    and formats the response for the UI.
 
     Args:
-        customer_id (Optional[float]): The customer ID from the Gradio input.
-            It can be a float (from gr.Number) or None.
+        customer_id: The unique identifier for the customer (input from UI).
 
     Returns:
-        Tuple[str, float, str, Optional[pd.DataFrame], Any]: A 5-tuple
-        mapping directly to the Gradio outputs:
-        - (str) Prediction label ("CHURN" / "NO CHURN" / "Error").
-        - (float) Churn probability (0.0 to 1.0), 0.0 on error.
-        - (str) Model version string, "N/A" on error.
-        - (Optional[pd.DataFrame]) DataFrame of features, or None on error.
-        - (Any) The raw JSON API response dict, or an error message string.
-    """
-    # 1. Load config (inside function for robustness)
-    try:
-        config = load_config()
-    except Exception as e:
-        error_msg = f"Configuration Error: Failed to load config. {e}"
-        return "Error", 0.0, "N/A", None, error_msg
+        A tuple containing:
+        - str: The prediction label ("CHURN", "NO CHURN", or "Error").
+        - float: The probability score (0.0 to 1.0).
+        - str: The model version used.
+        - Optional[pd.DataFrame]: A DataFrame of the features used for inference.
+        - Dict[str, Any]: The raw API response or an error dictionary.
 
-    # 2. Validate input
-    if customer_id is None or customer_id <= 0:
+    Raises:
+        None: All exceptions are caught and returned as error states for the UI.
+    """
+    # 1. Validation
+    if customer_id is None:
         return (
-            "No prediction",
+            "Error",
             0.0,
             "N/A",
             None,
-            "Please enter a valid, positive Customer ID.",
+            {"error": "Please enter a Customer ID."},
         )
 
-    try:
-        customer_id_int = int(customer_id)
-    except ValueError:
-        return "Error", 0.0, "N/A", None, "Invalid Customer ID: Must be a whole number."
-
-    # 3. Call API and handle all errors
-    try:
-        api_url = f"{config.fastapi_url}/predict/{customer_id_int}"
-
-        # Use httpx.Client for proper timeout and resource management
-        with httpx.Client(timeout=10.0) as client:
-            response = client.get(api_url)
-
-            # Raise exceptions for 4xx/5xx responses
-            response.raise_for_status()
-
-        # 4. Process successful response
-        data = response.json()  # Can raise json.JSONDecodeError
-
-        # 5. Extract and validate keys
-        prediction = data["prediction"]  # Can raise KeyError
-        probability = data["probability"]
-        model_version = data["version"]
-        features = data["features"]
-
-        # 6. Format outputs
-        prediction_label = "CHURN" if prediction == 1 else "NO CHURN"
-
-        # Robust DataFrame creation: create from dict, then reindex
-        # This prevents errors if API omits a feature or changes order
-        features_df = pd.DataFrame([features])
-        features_df = features_df.reindex(columns=FEATURE_ORDER)
-
+    if customer_id <= 0:
         return (
-            prediction_label,
-            probability,
-            model_version,
-            features_df,
-            data,  # Return the raw JSON dict
+            "Error",
+            0.0,
+            "N/A",
+            None,
+            {"error": "Customer ID must be a positive number."},
         )
 
-    # --- Specific Error Handlers ---
-    except httpx.ConnectError as e:
-        error_msg = f"Connection Error: Could not connect to the API at {config.fastapi_url}. {e}"
-        return "Error", 0.0, "N/A", None, error_msg
+    try:
+        config = load_config()
+        if not config.fastapi_url:
+            raise ValueError("FASTAPI_URL is not set in configuration.")
+
+        api_url = f"{config.fastapi_url}/predict/{int(customer_id)}"
+    except Exception as e:
+        return "Error", 0.0, "N/A", None, {"error": f"Configuration Failure: {e}"}
+
+    # 2. API Interaction
+    try:
+        with httpx.Client(timeout=TIMEOUT_SECONDS) as client:
+            response = client.get(api_url)
+            response.raise_for_status()
+            data = response.json()
+
+        # 3. Response Parsing
+        prediction_val = data.get("prediction")
+        probability_val = data.get("probability", 0.0)
+        version_val = data.get("version", "Unknown")
+        features_val = data.get("features", {})
+
+        if prediction_val is None:
+            raise KeyError("API response missing 'prediction' key.")
+
+        # 4. Formatting
+        label = "CHURN" if prediction_val == 1 else "NO CHURN"
+
+        # Create DataFrame and enforce column order
+        features_df = pd.DataFrame([features_val])
+        features_df = features_df.reindex(columns=FEATURE_ORDER).fillna(0)
+
+        return label, probability_val, version_val, features_df, data
+
+    except httpx.ConnectError:
+        err_msg = "Connection Refused: Is the FastAPI backend running?"
+        return "Error", 0.0, "N/A", None, {"error": err_msg}
 
     except httpx.HTTPStatusError as e:
-        # Try to parse error detail from API, fall back to status code
-        try:
-            error_detail = e.response.json().get("detail", e.strerror)
-        except json.JSONDecodeError:
-            error_detail = e.response.text or e.strerror
-        error_msg = f"API Error ({e.response.status_code}): {error_detail}"
-        return "Error", 0.0, "N/A", None, error_msg
+        err_msg = f"API Error {e.response.status_code}: {e.response.text}"
+        return "Error", 0.0, "N/A", None, {"error": err_msg}
 
-    except httpx.RequestError as e:
-        # Catch other request errors (e.g., ReadTimeout)
-        error_msg = f"API Request Error: {e}"
-        return "Error", 0.0, "N/A", None, error_msg
-
-    except json.JSONDecodeError:
-        error_msg = (
-            "API Error: Failed to decode successful (200) JSON response from server."
-        )
-        return "Error", 0.0, "N/A", None, error_msg
-
-    except KeyError as e:
-        error_msg = f"API Error: Response missing expected key: {e}. Check API schema."
-        return "Error", 0.0, "N/A", None, error_msg
-
-    except Exception as e:
-        # Generic fallback for any other unexpected error
-        error_msg = f"An unexpected error occurred: {str(e)}"
-        return "Error", 0.0, "N/A", None, error_msg
+    except (ValueError, KeyError, Exception) as e:
+        return "Error", 0.0, "N/A", None, {"error": f"Processing Error: {str(e)}"}
 
 
 def load_data(table_choice: str) -> Tuple[pd.DataFrame, str]:
-    table_map = {
+    """
+    Fetches recent data rows from the backend API for a specific table.
+
+    Args:
+        table_choice: The user-selected table name (e.g., "Prediction Logs").
+
+    Returns:
+        A tuple containing:
+        - pd.DataFrame: The retrieved data. Returns empty DataFrame on error.
+        - str: A status message indicating success or failure.
+
+    Raises:
+        None: Exceptions are handled and returned as status messages.
+    """
+    table_map: Dict[str, str] = {
         "Prediction Logs": "predictions",
         "Model Performance": "performance",
         "Customers": "customers",
     }
 
-    table_key = table_map.get(table_choice)
-
-    if not table_key:
-        return pd.DataFrame(), "Please select a table to load."
+    endpoint_suffix = table_map.get(table_choice)
+    if not endpoint_suffix:
+        return pd.DataFrame(), "Error: Invalid table selection."
 
     try:
         config = load_config()
-    except Exception as e:
-        return pd.DataFrame(), f"Configuration Error: {e}"
+        if not config.fastapi_url:
+            return pd.DataFrame(), "Error: FASTAPI_URL config missing."
 
-    try:
-        api_url = f"{config.fastapi_url}/data/{table_key}"
-        logger.info(f"Calling API: {api_url}")
+        url = f"{config.fastapi_url}/data/{endpoint_suffix}"
 
-        # Give more time for potentially large data queries
+        # Increased timeout for data fetching
         with httpx.Client(timeout=30.0) as client:
-            response = client.get(api_url)
+            response = client.get(url)
             response.raise_for_status()
+            data = response.json()
 
-        data = response.json()
         if not data:
-            return pd.DataFrame(), f"No data found in table '{table_key}'."
+            return pd.DataFrame(), f"No data returned for '{table_choice}'."
 
-        return (
-            pd.DataFrame(data),
-            f"Successfully loaded {len(data)} rows from '{table_key}'.",
-        )
+        df = pd.DataFrame(data)
+        return df, f"Successfully loaded {len(df)} rows."
 
-    except httpx.ConnectError as e:
-        return pd.DataFrame(), f"Connection Error: Could not connect to API. {e}"
+    except httpx.ConnectError:
+        return pd.DataFrame(), "Error: Could not connect to backend."
     except httpx.HTTPStatusError as e:
-        error_detail = e.response.json().get("detail", e.response.text)
-        return pd.DataFrame(), f"API Error ({e.response.status_code}): {error_detail}"
+        return pd.DataFrame(), f"API Error: {e.response.status_code}"
     except Exception as e:
-        return pd.DataFrame(), f"An unexpected error occurred: {e}"
+        return pd.DataFrame(), f"Unexpected Error: {e}"
 
 
-# --- Build the Gradio Interface ---
+# --- UI Construction ---
 with gr.Blocks(theme=gr.themes.Soft()) as demo:
-    gr.Markdown("# Customer Churn Prediction & Data Explorer")
+    gr.Markdown("# 📉 Customer Churn Prediction Dashboard")
 
     with gr.Tab("Live Prediction"):
+        gr.Markdown("### Real-time Inference")
         gr.Markdown(
-            """
-            Enter a Customer ID to fetch real-time features from the Feast online store
-            and get a live prediction from the deployed model.
-            """
+            "Enter a **Customer ID** to retrieve features from the Feature Store "
+            "and generate a prediction."
         )
-        with gr.Row():
-            # --- INPUTS ---
-            with gr.Column(scale=1):
-                customer_id_input = gr.Number(
-                    label="Customer ID", value=1001, precision=0
-                )
-                predict_button = gr.Button("Predict", variant="primary")
 
-            # --- OUTPUTS ---
-            with gr.Column(scale=3):
-                with gr.Tabs():
-                    with gr.Tab("Prediction Result"):
-                        prediction_output = gr.Label(label="Prediction")
-                        probability_output = gr.Slider(
-                            label="Churn Probability",
-                            minimum=0.0,
-                            maximum=1.0,
-                        )
-                        version_output = gr.Textbox(
-                            label="Model Version", interactive=False
-                        )
-                    with gr.Tab("Features Used"):
-                        features_output = gr.Dataframe(
-                            label="Online Features",
-                            headers=FEATURE_ORDER,
-                            datatype=["number"] * len(FEATURE_ORDER),
-                        )
-                    with gr.Tab("Raw API Response"):
-                        json_output = gr.JSON(label="API Response")
+        with gr.Row():
+            with gr.Column(scale=1):
+                input_customer_id = gr.Number(
+                    label="Customer ID", value=1001, precision=0, minimum=1
+                )
+                btn_predict = gr.Button("Predict Churn", variant="primary")
+
+            with gr.Column(scale=2):
+                with gr.Group():
+                    out_label = gr.Label(label="Prediction Result")
+                    out_prob = gr.Slider(
+                        label="Churn Probability", minimum=0, maximum=1
+                    )
+
+                with gr.Accordion("Model Details & Features", open=True):
+                    out_version = gr.Textbox(label="Model Version")
+                    out_features = gr.Dataframe(
+                        label="Input Features", type="pandas", interactive=False
+                    )
+
+                with gr.Accordion("Raw API Response", open=False):
+                    out_json = gr.JSON(label="Debug Info")
+
+        btn_predict.click(
+            fn=predict_churn,
+            inputs=[input_customer_id],
+            outputs=[out_label, out_prob, out_version, out_features, out_json],
+        )
 
     with gr.Tab("Data Explorer"):
-        gr.Markdown(
-            "Browse the latest 100 rows from the production database. "
-            "Select a table and click 'Load Data'."
-        )
+        gr.Markdown("### Production Database View")
         with gr.Row():
-            table_select_input = gr.Dropdown(
-                label="Select Table",
+            input_table = gr.Dropdown(
                 choices=["Prediction Logs", "Model Performance", "Customers"],
+                value="Prediction Logs",
+                label="Select Table",
             )
-            load_data_button = gr.Button("Load Data", variant="secondary")
+            btn_load = gr.Button("Load Data", variant="secondary")
 
-        data_explorer_status = gr.Textbox(
-            label="Status",
-            interactive=False,
-            placeholder="Click 'Load Data' to see results...",
+        out_status = gr.Textbox(label="Status", interactive=False)
+        out_data = gr.Dataframe(label="Table Contents", interactive=False, height=500)
+
+        btn_load.click(
+            fn=load_data,
+            inputs=[input_table],
+            outputs=[out_data, out_status],
         )
-        data_explorer_output = gr.Dataframe(
-            label="Table Data", interactive=False, wrap=True, max_height=600
-        )
-
-    predict_button.click(
-        fn=predict_churn,
-        inputs=[customer_id_input],
-        outputs=[
-            prediction_output,
-            probability_output,
-            version_output,
-            features_output,
-            json_output,
-        ],
-    )
-
-    load_data_button.click(
-        fn=load_data,
-        inputs=[table_select_input],
-        outputs=[data_explorer_output, data_explorer_status],
-    )
 
 if __name__ == "__main__":
     try:
-        print("Launching Gradio app on http://0.0.0.0:7860")
-        demo.launch(server_name="0.0.0.0", server_port=7860)
-    except Exception as e:
-        # Catch errors like "Address already in use"
-        print(f"Failed to launch Gradio app: {e}", file=sys.stderr)
+        logger.info("Starting Gradio Interface...")
+        demo.launch(server_name="0.0.0.0", server_port=7860, show_error=True)
+    except OSError as e:
+        logger.error(f"Failed to launch on port 7860: {e}")
         sys.exit(1)
+    except KeyboardInterrupt:
+        logger.info("Stopping Gradio Interface...")
+        sys.exit(0)

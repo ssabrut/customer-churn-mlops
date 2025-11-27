@@ -50,7 +50,9 @@ def get_db_connection_string() -> str:
         env_values[var] = value
 
     if missing_vars:
-        raise EnvironmentError(f"Missing required environment variables: {missing_vars}")
+        raise EnvironmentError(
+            f"Missing required environment variables: {missing_vars}"
+        )
 
     return (
         f"postgresql://{env_values['APP_DB_USER']}:{env_values['APP_DB_PASSWORD']}"
@@ -139,26 +141,32 @@ def parse_evidently_metrics(metrics_dict: Dict[str, Any]) -> List[Dict[str, Any]
             raise KeyError("Could not find 'result' in Evidently metrics output.")
 
         # 1. Dataset-level metrics
-        rows_to_insert.append({
-            "metric_name": "dataset_drift_share",
-            "feature_name": "GLOBAL",
-            "metric_value": drift_data.get("share_of_drifted_columns", 0.0)
-        })
-        rows_to_insert.append({
-            "metric_name": "dataset_drift_detected",
-            "feature_name": "GLOBAL",
-            "metric_value": float(drift_data.get("dataset_drift", 0.0))
-        })
+        rows_to_insert.append(
+            {
+                "metric_name": "dataset_drift_share",
+                "feature_name": "GLOBAL",
+                "metric_value": drift_data.get("share_of_drifted_columns", 0.0),
+            }
+        )
+        rows_to_insert.append(
+            {
+                "metric_name": "dataset_drift_detected",
+                "feature_name": "GLOBAL",
+                "metric_value": float(drift_data.get("dataset_drift", 0.0)),
+            }
+        )
 
         # 2. Feature-level metrics
         drift_by_columns = drift_data.get("drift_by_columns", {})
         for feature_name, details in drift_by_columns.items():
             drift_score = details.get("drift_score", 0.0)
-            rows_to_insert.append({
-                "metric_name": "feature_drift_score",
-                "feature_name": feature_name,
-                "metric_value": drift_score
-            })
+            rows_to_insert.append(
+                {
+                    "metric_name": "feature_drift_score",
+                    "feature_name": feature_name,
+                    "metric_value": drift_score,
+                }
+            )
 
     except (KeyError, IndexError, TypeError) as e:
         logger.error(f"Error parsing Evidently dictionary: {e}")
@@ -185,10 +193,12 @@ def save_metrics_to_db(connection_str: str, metrics_rows: List[Dict[str, Any]]) 
         logger.warning("No metrics to save.")
         return
 
-    insert_query = text("""
+    insert_query = text(
+        """
         INSERT INTO drift_metrics (metric_name, feature_name, metric_value)
         VALUES (:metric_name, :feature_name, :metric_value)
-    """)
+    """
+    )
 
     try:
         engine = create_engine(connection_str)
@@ -221,7 +231,7 @@ def main() -> None:
     # 1. Configuration & Data Loading
     try:
         connection_str = get_db_connection_string()
-        
+
         current_df = fetch_production_data(connection_str, limit=5000)
         reference_df = load_reference_data(REFERENCE_DATA_PATH)
 
@@ -236,9 +246,11 @@ def main() -> None:
     # 2. Data Alignment
     common_cols = list(set(current_df.columns) & set(reference_df.columns))
     if not common_cols:
-        logger.error("Fatal Error: No common columns found between Reference and Production data.")
+        logger.error(
+            "Fatal Error: No common columns found between Reference and Production data."
+        )
         sys.exit(1)
-    
+
     logger.info(f"Aligning datasets on {len(common_cols)} common columns.")
     current_df = current_df[common_cols]
     reference_df = reference_df[common_cols]
@@ -248,10 +260,10 @@ def main() -> None:
         logger.info("Running Evidently Drift Report...")
         drift_report = Report(metrics=[DataDriftPreset()])
         drift_report.run(reference_data=reference_df, current_data=current_df)
-        
+
         metrics_dict = drift_report.as_dict()
         parsed_rows = parse_evidently_metrics(metrics_dict)
-        
+
     except Exception as e:
         logger.error(f"Evidently Report Generation/Parsing Failed: {e}")
         sys.exit(1)

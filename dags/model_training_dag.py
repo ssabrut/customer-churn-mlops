@@ -131,4 +131,9 @@ with DAG(
     )
 
     # Define task dependencies
-    task_preprocess_data >> task_feast_materialize >> task_train_model >> task_promote_model
+    (
+        task_preprocess_data
+        >> task_feast_materialize
+        >> task_train_model
+        >> task_promote_model
+    )

@@ -58,13 +58,13 @@ def get_run_metric(client: MlflowClient, run_id: str, metric_name: str) -> float
     try:
         run = client.get_run(run_id)
         metrics = run.data.metrics
-        
+
         if metric_name not in metrics:
             raise KeyError(f"Metric '{metric_name}' not found in run {run_id}.")
-            
+
         value = metrics[metric_name]
         return float(value)
-        
+
     except MlflowException as e:
         logger.error(f"MLflow API error fetching run {run_id}: {e}")
         raise
@@ -96,11 +96,13 @@ def get_latest_model_version(
         )
         if not versions:
             return None
-        # get_latest_versions returns a list, usually sorted by version. 
+        # get_latest_versions returns a list, usually sorted by version.
         # We take the first one provided by the API as the candidate.
         return versions[0]
     except MlflowException as e:
-        logger.error(f"Failed to fetch latest versions for {model_name} in {stage}: {e}")
+        logger.error(
+            f"Failed to fetch latest versions for {model_name} in {stage}: {e}"
+        )
         raise
 
 
@@ -140,13 +142,15 @@ def main() -> None:
     try:
         logger.info(f"Fetching 'Staging' version for model: {MODEL_NAME}")
         staging_model = get_latest_model_version(client, MODEL_NAME, "Staging")
-        
+
         if staging_model is None:
             logger.error(f"No 'Staging' model found for {MODEL_NAME}. Cannot promote.")
             sys.exit(1)
-            
+
         staging_metric = get_run_metric(client, staging_model.run_id, METRIC_TO_CHECK)
-        logger.info(f"Staging Model (v{staging_model.version}) {METRIC_TO_CHECK}: {staging_metric:.4f}")
+        logger.info(
+            f"Staging Model (v{staging_model.version}) {METRIC_TO_CHECK}: {staging_metric:.4f}"
+        )
 
     except (MlflowException, KeyError, ValueError) as e:
         logger.error(f"Fatal error evaluating Staging model: {e}")
@@ -154,7 +158,7 @@ def main() -> None:
 
     # 3. Fetch Production Model & Compare
     should_promote = False
-    
+
     try:
         production_model = get_latest_model_version(client, MODEL_NAME, "Production")
 
@@ -162,8 +166,12 @@ def main() -> None:
             logger.info("No 'Production' model found. Promoting Staging immediately...")
             should_promote = True
         else:
-            prod_metric = get_run_metric(client, production_model.run_id, METRIC_TO_CHECK)
-            logger.info(f"Production Model (v{production_model.version}) {METRIC_TO_CHECK}: {prod_metric:.4f}")
+            prod_metric = get_run_metric(
+                client, production_model.run_id, METRIC_TO_CHECK
+            )
+            logger.info(
+                f"Production Model (v{production_model.version}) {METRIC_TO_CHECK}: {prod_metric:.4f}"
+            )
 
             # Comparison Logic (Higher is Better for AUC)
             if staging_metric > prod_metric:
@@ -189,9 +197,11 @@ def main() -> None:
                 name=MODEL_NAME,
                 version=staging_model.version,
                 stage="Production",
-                archive_existing_versions=True
+                archive_existing_versions=True,
             )
-            logger.success(f"Successfully promoted v{staging_model.version} to Production.")
+            logger.success(
+                f"Successfully promoted v{staging_model.version} to Production."
+            )
         except MlflowException as e:
             logger.error(f"Failed to transition model stage: {e}")
             sys.exit(1)

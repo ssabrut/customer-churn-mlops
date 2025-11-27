@@ -34,7 +34,9 @@ FEAST_REPO_PATH: str = "feature_repo"
 ENTITY_DF_PATH: str = os.path.join(project_root, "data/preprocessed/train.parquet")
 
 
-def validate_dataframe(df: DataFrame, required_columns: List[str], step_name: str) -> None:
+def validate_dataframe(
+    df: DataFrame, required_columns: List[str], step_name: str
+) -> None:
     """
     Validates a DataFrame for emptiness and missing columns.
 
@@ -51,7 +53,7 @@ def validate_dataframe(df: DataFrame, required_columns: List[str], step_name: st
     """
     if df.empty:
         raise ValueError(f"Fatal Error: DataFrame is empty at step: {step_name}.")
-    
+
     missing_cols = [col for col in required_columns if col not in df.columns]
     if missing_cols:
         raise ValueError(
@@ -110,13 +112,17 @@ def main() -> None:
 
     try:
         mlflow.set_tracking_uri(mlflow_tracking_uri)
-        client = MlflowClient(tracking_uri=mlflow_tracking_uri, registry_uri=mlflow_tracking_uri)
-        
-        experiment: Optional[Experiment] = mlflow.get_experiment_by_name(EXPERIMENT_NAME)
+        client = MlflowClient(
+            tracking_uri=mlflow_tracking_uri, registry_uri=mlflow_tracking_uri
+        )
+
+        experiment: Optional[Experiment] = mlflow.get_experiment_by_name(
+            EXPERIMENT_NAME
+        )
         if experiment is None:
             logger.info(f"Creating new MLflow experiment: {EXPERIMENT_NAME}")
             mlflow.create_experiment(EXPERIMENT_NAME)
-        
+
         mlflow.set_experiment(EXPERIMENT_NAME)
     except (MlflowException, ConnectionError) as e:
         logger.error(f"Fatal Error: Failed to configure MLflow: {e}")
@@ -138,16 +144,20 @@ def main() -> None:
     logger.info(f"Loading entity dataframe from: {ENTITY_DF_PATH}")
     try:
         if not os.path.exists(ENTITY_DF_PATH):
-            raise FileNotFoundError(f"Entity Parquet file not found at: {ENTITY_DF_PATH}")
-        
+            raise FileNotFoundError(
+                f"Entity Parquet file not found at: {ENTITY_DF_PATH}"
+            )
+
         entity_df: DataFrame = pd.read_parquet(
             ENTITY_DF_PATH,
             columns=["customer_id", "event_timestamp"],
         )
-        
+
         # Validate Entity DF
-        validate_dataframe(entity_df, ["customer_id", "event_timestamp"], "Entity Loading")
-        
+        validate_dataframe(
+            entity_df, ["customer_id", "event_timestamp"], "Entity Loading"
+        )
+
     except (FileNotFoundError, ValueError, Exception) as e:
         logger.error(f"Fatal Error during entity loading: {e}")
         sys.exit(1)
@@ -172,10 +182,10 @@ def main() -> None:
             features=feature_refs,
         )
         training_df: DataFrame = training_data.to_df()
-        
+
         # Validate Training DF
         validate_dataframe(training_df, [TARGET_COLUMN], "Feature Retrieval")
-        
+
     except Exception as e:
         logger.error(f"Fatal Error: Failed to get historical features from Feast: {e}")
         sys.exit(1)
@@ -188,11 +198,13 @@ def main() -> None:
         cols_to_drop.append("created_timestamp")
 
     try:
-        training_df = training_df.drop(columns=cols_to_drop, errors='ignore')
-        
+        training_df = training_df.drop(columns=cols_to_drop, errors="ignore")
+
         # Check for NaN values which might break XGBoost or Scaler if not handled
         if training_df.isnull().any().any():
-            logger.warning("NaN values found in training data. Ensure XGBoost handles them or impute upstream.")
+            logger.warning(
+                "NaN values found in training data. Ensure XGBoost handles them or impute upstream."
+            )
 
         X: DataFrame = training_df.drop(TARGET_COLUMN, axis=1)
         y: Series = training_df[TARGET_COLUMN]
@@ -200,12 +212,12 @@ def main() -> None:
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.1, random_state=42
         )
-        
+
         # Validate Split
         validate_dataframe(X_train, [], "Train Split - X")
         if y_train.empty:
             raise ValueError("Training target vector is empty.")
-            
+
     except ValueError as e:
         logger.error(f"Fatal Error during data preparation: {e}")
         sys.exit(1)
@@ -218,7 +230,7 @@ def main() -> None:
         "objective": "binary:logistic",
         "random_state": 42,
     }
-    
+
     pipeline: Pipeline = Pipeline(
         steps=[
             ("scaler", StandardScaler(with_mean=False)),
@@ -240,20 +252,22 @@ def main() -> None:
 
             logger.info("Evaluating model...")
             yhat: np.ndarray = pipeline.predict(X_test)
-            
+
             f1: float = f1_score(y_test, yhat)
             accuracy: float = accuracy_score(y_test, yhat)
-            
+
             try:
                 auc_score: float = roc_auc_score(y_test, yhat)
             except ValueError:
-                logger.warning("Only one class present in y_test. ROC AUC score is not defined.")
+                logger.warning(
+                    "Only one class present in y_test. ROC AUC score is not defined."
+                )
                 auc_score = float("nan")
 
             metrics: Dict[str, float] = {
                 "f1_score": f1,
                 "accuracy": accuracy,
-                "roc_auc_curve": auc_score
+                "roc_auc_curve": auc_score,
             }
             mlflow.log_metrics(metrics)
             logger.info(f"Metrics: {metrics}")
@@ -269,20 +283,24 @@ def main() -> None:
             # --- 8. Model Registry Transition ---
             logger.info("Checking model registry for transition...")
             latest_versions = client.get_latest_versions(MODEL_NAME, stages=["None"])
-            
+
             if latest_versions:
                 target_version = latest_versions[0].version
                 logger.info(f"Transitioning version {target_version} to 'Staging'...")
-                
+
                 client.transition_model_version_stage(
                     name=MODEL_NAME,
                     version=target_version,
                     stage="Staging",
-                    archive_existing_versions=False
+                    archive_existing_versions=False,
                 )
-                logger.success(f"Successfully transitioned model version {target_version} to 'Staging'.")
+                logger.success(
+                    f"Successfully transitioned model version {target_version} to 'Staging'."
+                )
             else:
-                logger.warning("No new model version found in 'None' stage to transition.")
+                logger.warning(
+                    "No new model version found in 'None' stage to transition."
+                )
 
             logger.success("Pipeline execution completed successfully.")
 

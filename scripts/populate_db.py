@@ -191,14 +191,10 @@ def main(retries: int = 5, delay: int = 5) -> None:
 
             # B. Write Data
             logger.info(f"Writing data to table '{APP_TABLE_NAME}'...")
-            
+
             # utilizing chunksize helps prevent memory issues with large datasets
             df.to_sql(
-                APP_TABLE_NAME, 
-                engine, 
-                if_exists="replace", 
-                index=False, 
-                chunksize=1000
+                APP_TABLE_NAME, engine, if_exists="replace", index=False, chunksize=1000
             )
 
             logger.success(
@@ -217,8 +213,8 @@ def main(retries: int = 5, delay: int = 5) -> None:
         except exc.SQLAlchemyError as e:
             logger.error(f"Database integrity or query error: {e}")
             # We break here because syntax/integrity errors rarely resolve with retries
-            break 
-            
+            break
+
         except Exception as e:
             logger.error(f"Unexpected error during database operations: {e}")
             if attempt_count < retries:

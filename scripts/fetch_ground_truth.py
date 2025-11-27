@@ -56,11 +56,13 @@ def main(args: argparse.Namespace) -> None:
 
     # 2. Fetch predictions from N days ago
     # Use parameterized query to prevent SQL injection
-    sql_preds = text("""
+    sql_preds = text(
+        """
         SELECT customer_id, prediction
         FROM prediction_logs
         WHERE DATE(timestamp) > :process_date
-    """)
+    """
+    )
     try:
         preds_df: pd.DataFrame = pd.read_sql(
             sql_preds, engine, params={"process_date": process_date}

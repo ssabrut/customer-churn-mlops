@@ -6,8 +6,8 @@ from typing import AsyncIterator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
-from pydantic import ValidationError
 from prometheus_fastapi_instrumentator import Instrumentator
+from pydantic import ValidationError
 
 from core.config import load_config
 from core.routers.churn import router as churn_router
