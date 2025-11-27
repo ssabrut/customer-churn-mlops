@@ -3,11 +3,9 @@ global:
   evaluation_interval: 15s # How often to evaluate rules
 
 scrape_configs:
-  - job_name: 'fastapi_churn_service'
-    scrape_interval: 5s # Scrape more frequently for real-time app metrics
-    metrics_path: '/metrics'
+  - job_name: 'churn_service'
     static_configs:
-      - targets: ['fastapi_server:8000']
+      - targets: ['fastapi_blue:8000', 'fastapi_green:8000']
 
   - job_name: 'prometheus'
     static_configs:

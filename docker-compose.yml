@@ -233,19 +233,31 @@ services:
       timeout: 5s
       retries: 5
 
-  fastapi_server:
+  nginx_lb:
+    image: nginx:latest
+    container_name: nginx_lb
+    ports:
+      - "8000:80"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - public
+      - internal
+    depends_on:
+      - fastapi_blue
+
+  fastapi_blue:
     build:
       context: .
       dockerfile: Dockerfile
     image: churn-mlops-image:latest
-    container_name: fastapi_server
-    restart: unless-stopped
+    container_name: fastapi_blue
     ports:
-      - "8000:8000"
-    env_file:
-      - .env
+      - "8001:8000"
+    env_file: .env
+    environment:
+      - DEPLOYMENT_COLOR=blue
     networks:
-      - public
       - internal
     depends_on:
       app_db_init:
@@ -254,8 +266,20 @@ services:
         condition: service_healthy
       mlflow:
         condition: service_started
-    command: >
-      sh -c "echo 'Starting FastAPI Server...'; sleep 5; uvicorn core.main:app --host 0.0.0.0 --port 8000"
+
+  fastapi_green:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: churn-mlops-image:latest
+    container_name: fastapi_green
+    ports:
+      - "8002:8000"
+    env_file: .env
+    environment:
+      - DEPLOYMENT_COLOR=green
+    networks:
+      - internal
 
   gradio_server:
     build:
@@ -271,7 +295,7 @@ services:
     env_file:
       - .env
     depends_on:
-      fastapi_server:
+      nginx_lb:
         condition: service_started
 
   prometheus:
@@ -289,7 +313,8 @@ services:
       - internal
       - public
     depends_on:
-      - fastapi_server
+      - fastapi_blue
+      - fastapi_green
 
   grafana:
     image: grafana/grafana:latest
