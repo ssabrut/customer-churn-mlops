@@ -25,7 +25,6 @@ except EnvironmentError as e:
 
 REFERENCE_DATA_PATH: str = f"{project_root}/data/preprocessed/train.parquet"
 DB_CONNECTION_STR: str = f"postgresql://{APP_DB_USER}:{APP_DB_PASSWORD}@{APP_DB_HOST}:{APP_DB_PORT}/{APP_DB_NAME}"
-REPORT_OUTPUT_DIR = "reports/drift"
 
 def fetch_production_data(limit: int = 5000) -> pd.DataFrame:
     engine = create_engine(DB_CONNECTION_STR)
@@ -110,16 +109,6 @@ def main():
     
     # Save to DB
     save_metrics_to_db(metrics_dict)
-
-    # Generate Drift Report (HTML)
-    logger.info("Generating Data Drift Report...")
-    drift_report = Report(metrics=[DataDriftPreset()])
-    drift_report.run(reference_data=reference_df, current_data=current_df)
-    
-    os.makedirs(REPORT_OUTPUT_DIR, exist_ok=True)
-    report_path = os.path.join(REPORT_OUTPUT_DIR, "drift_report.html")
-    drift_report.save_html(report_path)
-    logger.success(f"Drift report saved to {report_path}")
 
 if __name__ == "__main__":
     main()
