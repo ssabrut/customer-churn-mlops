@@ -23,46 +23,59 @@ A production-ready MLOps platform for predicting customer churn using machine le
 
 ## 🏗️ Architecture
 
+High-level services run in separate containers on the shared Docker network:
+
 ```
-┌─────────────────┐
-│   Gradio UI     │  Port 7860
-│   (Frontend)    │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  FastAPI Server │  Port 8000
-│  (Prediction)   │
-└────────┬────────┘
-         │
-    ┌────┴────┐
-    ▼         ▼
-┌─────────┐ ┌──────────┐
-│  Feast  │ │  MLflow  │
-│ Feature │ │  Model   │
-│  Store  │ │ Registry │
-└────┬────┘ └────┬─────┘
-     │           │
-┌────┴────┐ ┌────┴─────┐
-│  Redis  │ │   MinIO  │
-│ (Online)│ │ (S3-like)│
-└─────────┘ └──────────┘
-     │           │
-     └─────┬─────┘
-           ▼
-    ┌─────────────┐
-    │  PostgreSQL │
-    │  (Multiple) │
-    └─────────────┘
-           │
-           ▼
-    ┌─────────────┐
-    │   Airflow   │  Port 8080
-    │ (Orchestr.) │
-    └─────────────┘
+┌──────────────────┐
+│ Gradio UI        │ 7860 ─┐
+└────────┬─────────┘       │
+         │HTTP             │
+         ▼                 │
+┌──────────────────┐       │
+│ FastAPI Serving  │ 8000 ─┤
+│  • Prediction API│       │
+│  • Health API    │◄──────┘
+└──────┬───────────┘
+       │ Feature lookups
+       ▼
+┌──────────────┐      ┌──────────────┐
+│ Feast Store  │◄────►│ Redis Online │
+└──────────────┘      └──────────────┘
+       │ Offline/Historical
+       ▼
+┌──────────────┐
+│ PostgreSQL   │◄─────────┐
+│ (App / FS)   │          │ Airflow DAGs
+└──────────────┘          │
+       │                  ▼
+       ▼           ┌──────────────┐
+┌──────────────┐   │ Airflow      │ 8080
+│ MLflow       │◄──┤ Scheduler/UI │
+│ (5050)       │   └──────────────┘
+└────┬─────────┘
+     │ Artifacts / Metadata
+┌────▼─────┐   ┌──────────────┐
+│  MinIO   │   │ MLflow PG    │
+└──────────┘   └──────────────┘
+
+Grafana + Prometheus sit on the same network and scrape FastAPI, Airflow, and database metrics for dashboards. Prediction logs flow back through the ground-truth DAG, metrics are pushed into MLflow, and Grafana visualizes both operational and model health signals.
 ```
 
-> 📖 **For a detailed architecture diagram with data flows, component interactions, and deployment details, see [ARCHITECTURE.md](ARCHITECTURE.md)**
+> 📖 **Detailed views (high-level, component, prediction/training/monitoring flows, network, and container topology) are captured in [ARCHITECTURE.md](ARCHITECTURE.md) and [ARCHITECTURE.mdd](ARCHITECTURE.mdd).**
+
+## 🛡️ Deployment Strategy (Canary Releases)
+
+- **Blue/Green foundation**: Two FastAPI + Gradio stacks (`fastapi_server_blue`, `fastapi_server_green`) sit behind the same reverse proxy. Only one version is routed live.
+- **Canary percentage routing**: When a new model version is promoted in MLflow, Airflow updates the FastAPI container tagged `:canary`. Docker Compose variables (`CANARY_WEIGHT`, `STABLE_WEIGHT`) instruct the proxy to send a configurable percentage of traffic (default 10%) to the canary container.
+- **Automated metrics gating**: Prediction logs from the canary path include a `serving_variant` column in `app_postgres`. The ground-truth DAG and `scripts/calculate_performance.py` compute variant-specific metrics; MLflow registers these under `canary-monitoring`.
+- **Promotion workflow**: If canary metrics exceed configured thresholds (AUC lift, max drift), the `scripts/promote_model.py` script switches the stable container image tag and drains traffic from the canary. Otherwise, canary traffic is rolled back to 0% and the previous model remains primary.
+
+## 📈 Data Drift Detection
+
+- **Feature distribution tracking**: The `scripts/detect_drift.py` job (invoked by the `churn_drift_detection_pipeline` DAG) retrieves recent inference features from `app_postgres` and compares them to historical reference statistics stored in MLflow artifacts.
+- **Statistical tests**: Kolmogorov-Smirnov for continuous fields and Population Stability Index for categorical buckets generate per-feature drift scores. Configurable thresholds live in `core/constant.py`.
+- **Alerting and labeling**: Drift flags are persisted in the `prediction_logs` table and surfaced via Grafana panels. Airflow sends Slack/webhook alerts when global drift exceeds limits, and the monitoring DAG can automatically trigger retraining if drift persists for multiple runs.
+- **Closed-loop feedback**: Detected drift influences the canary gates—canary models must demonstrate lower drift relative to the current production variant before full promotion.
 
 ## 🛠️ Tech Stack
 

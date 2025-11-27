@@ -1,0 +1,18 @@
+{
+	"ulid": "01KB23K3Z18P54QV5711CPTBP4",
+	"minTime": 1764216001452,
+	"maxTime": 1764223200000,
+	"stats": {
+		"numSamples": 4620,
+		"numFloatSamples": 4620,
+		"numSeries": 644,
+		"numChunks": 644
+	},
+	"compaction": {
+		"level": 1,
+		"sources": [
+			"01KB23K3Z18P54QV5711CPTBP4"
+		]
+	},
+	"version": 1
+}
