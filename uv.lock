@@ -722,6 +722,7 @@ dependencies = [
     { name = "apache-airflow" },
     { name = "apache-airflow-providers-cncf-kubernetes" },
     { name = "apache-airflow-providers-docker" },
+    { name = "apache-airflow-providers-standard" },
     { name = "asyncpg" },
     { name = "black", extra = ["jupyter"] },
     { name = "docker" },
@@ -751,9 +752,10 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "apache-airflow", specifier = ">=3.0.6" },
+    { name = "apache-airflow", specifier = ">=3.1.2" },
     { name = "apache-airflow-providers-cncf-kubernetes", specifier = ">=10.6.0" },
     { name = "apache-airflow-providers-docker", specifier = ">=4.4.0" },
+    { name = "apache-airflow-providers-standard", specifier = ">=1.9.1" },
     { name = "asyncpg", specifier = ">=0.30.0" },
     { name = "black", extras = ["jupyter"], specifier = ">=25.11.0" },
     { name = "docker", specifier = ">=7.1.0" },

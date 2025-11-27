@@ -24,7 +24,6 @@ dependencies = [
     "seaborn>=0.13.2",
     "xgboost>=2.1.4",
     "feast[redis]>=0.47.0",
-    "apache-airflow>=3.0.6",
     "jq>=1.10.0",
     "graphviz>=0.21",
     "asyncpg>=0.30.0",
@@ -33,4 +32,6 @@ dependencies = [
     "prometheus-fastapi-instrumentator>=7.1.0",
     "pandera>=0.27.0",
     "evidently>=0.7.17",
+    "apache-airflow-providers-standard>=1.9.1",
+    "apache-airflow>=3.1.2",
 ]
