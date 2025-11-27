@@ -61,14 +61,15 @@ High-level services run in separate containers on the shared Docker network:
 Grafana + Prometheus sit on the same network and scrape FastAPI, Airflow, and database metrics for dashboards. Prediction logs flow back through the ground-truth DAG, metrics are pushed into MLflow, and Grafana visualizes both operational and model health signals.
 ```
 
-> 📖 **Detailed views (high-level, component, prediction/training/monitoring flows, network, and container topology) are captured in [ARCHITECTURE.md](ARCHITECTURE.md) and [ARCHITECTURE.mdd](ARCHITECTURE.mdd).**
+> 📖 **Detailed views (high-level, component, prediction/training/monitoring flows, network, and container topology) are captured in [ARCHITECTURE.md](ARCHITECTURE.md)**
 
-## 🛡️ Deployment Strategy (Canary Releases)
+## 🛡️ Deployment Strategy (Blue/Green)
 
-- **Blue/Green foundation**: Two FastAPI + Gradio stacks (`fastapi_server_blue`, `fastapi_server_green`) sit behind the same reverse proxy. Only one version is routed live.
-- **Canary percentage routing**: When a new model version is promoted in MLflow, Airflow updates the FastAPI container tagged `:canary`. Docker Compose variables (`CANARY_WEIGHT`, `STABLE_WEIGHT`) instruct the proxy to send a configurable percentage of traffic (default 10%) to the canary container.
-- **Automated metrics gating**: Prediction logs from the canary path include a `serving_variant` column in `app_postgres`. The ground-truth DAG and `scripts/calculate_performance.py` compute variant-specific metrics; MLflow registers these under `canary-monitoring`.
-- **Promotion workflow**: If canary metrics exceed configured thresholds (AUC lift, max drift), the `scripts/promote_model.py` script switches the stable container image tag and drains traffic from the canary. Otherwise, canary traffic is rolled back to 0% and the previous model remains primary.
+- **Twin FastAPI stacks**: `docker-compose.yml` provisions `fastapi_blue` (port 8001) and `fastapi_green` (port 8002). Both containers stay warm, share the same backing services (Postgres, Redis, MLflow, Feast), and expose identical APIs.
+- **Single entrypoint**: The `nginx_lb` service mounts `docker/nginx/nginx.conf`, which defines an `upstream backend` that points to exactly one color (`fastapi_blue` or `fastapi_green`). All client traffic (including the `gradio_server`) hits Nginx on port 8000 and is forwarded to the active color.
+- **Atomic switchovers**: The `entrypoint/deploy_blue_green.sh` script automates promotions. It builds the idle color, waits for `/health` to respond `ok`, rewrites `nginx.conf` to the new target, and sends `nginx -s reload` inside the load balancer container so connections drain gracefully.
+- **Self-serve rollback**: Because the old color keeps running, reverting is as simple as re-running the script; it will detect the current color, rebuild the opposite side, and flip traffic back after passing health checks.
+- **Operational knobs**: You can still stop the inactive container (`docker stop fastapi_blue`, etc.) to save resources, but leaving both online yields instant failover and easy comparisons during verification windows.
 
 ## 📈 Data Drift Detection
 
