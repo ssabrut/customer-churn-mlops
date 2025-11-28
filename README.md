@@ -170,7 +170,30 @@ Once deployed, access the services at:
 - **Grafana**: http://localhost:3000 (admin/admin)
 - **MinIO Console**: http://localhost:9001
 
-### 5. Stop Services
+### 5. Initialize the System (Required Before Use)
+
+**Before using the system, you must train the initial model:**
+
+1. **Access Airflow Dashboard**:
+   - Navigate to http://localhost:8080
+   - Login with username: `admin` and password: `admin`
+
+2. **Run the Training Pipeline**:
+   - Find the `churn_model_training_pipeline` DAG in the Airflow dashboard
+   - Click on the DAG to view its details
+   - Toggle the DAG to enable it (if not already enabled)
+   - Click the "Play" button (▶️) to trigger a manual run
+   - Wait for the pipeline to complete successfully (this will preprocess data, materialize features, and train the initial model)
+
+3. **Access the UI**
+   - Navigate to http://localhost:7860
+   - Go to the `Data Explorer` tab at above
+   - Then in the `Select Table` dropdown, choose `Customers` to choose one of the `Id`
+   - Go back to the `Live Prediction`, then paste the customer id that wanted to predict
+
+**Note**: The system requires a trained model to be registered in MLflow before predictions can be made. The training pipeline must complete successfully before using the API or Gradio UI.
+
+### 6. Stop Services
 
 ```bash
 make down

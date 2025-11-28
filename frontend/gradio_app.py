@@ -168,7 +168,17 @@ def load_data(table_choice: str) -> Tuple[pd.DataFrame, str]:
 
 
 # --- UI Construction ---
-with gr.Blocks(theme=gr.themes.Soft()) as demo:
+with gr.Blocks(
+    theme=gr.themes.Soft(),
+    js="""
+function refresh() {
+    const url = new URL(window.location);
+    if (url.searchParams.get('__theme') !== 'light') {
+        url.searchParams.set('__theme', 'light');
+        window.location.href = url.href;
+    }
+}""",
+) as demo:
     gr.Markdown("# 📉 Customer Churn Prediction Dashboard")
 
     with gr.Tab("Live Prediction"):
@@ -218,7 +228,9 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
             btn_load = gr.Button("Load Data", variant="secondary")
 
         out_status = gr.Textbox(label="Status", interactive=False)
-        out_data = gr.Dataframe(label="Table Contents", interactive=False, height=500)
+        out_data = gr.Dataframe(
+            label="Table Contents", interactive=False, max_height=500
+        )
 
         btn_load.click(
             fn=load_data,
